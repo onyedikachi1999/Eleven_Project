@@ -20,8 +20,6 @@ const navLinks = [
 
 const resourceLinks = [
   { to: '/pricing', label: 'Pricing', icon: CreditCard, desc: 'Tiers & support options' },
-  { to: '/guidelines', label: 'Guidelines', icon: ShieldAlert, desc: 'Rules & guidelines' },
-  { to: '/about', label: 'About Us', icon: Info, desc: 'Our mission & heart' },
 ]
 
 export default function Navbar() {
