@@ -25,6 +25,7 @@ async function fetchApi(path: string, options: RequestInit = {}) {
 export const authApi = {
   me: () => fetchApi('/auth/me/'),
   login: (username: string, password: string) => fetchApi('/auth/login/', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  register: (data: Record<string, unknown>) => fetchApi('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => fetchApi('/auth/logout/', { method: 'POST' }),
 };
 

@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import Home from './pages/Home'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import NotFound from './pages/NotFound'
 import TestimonyHub from './pages/TestimonyHub'
 import PrayerRoom from './pages/PrayerRoom'
@@ -25,6 +26,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/testimonies" element={<TestimonyHub />} />
           <Route path="/prayer-room" element={<PrayerRoom />} />
           <Route path="/tv" element={<ElevenTV />} />

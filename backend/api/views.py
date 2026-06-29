@@ -315,6 +315,39 @@ def api_logout(request):
     return Response({'detail': 'Logged out'})
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def api_register(request):
+    username = request.data.get('username')
+    email = request.data.get('email')
+    password = request.data.get('password')
+    first_name = request.data.get('first_name', '')
+    last_name = request.data.get('last_name', '')
+
+    if not username or not email or not password:
+        return Response({'detail': 'Username, email, and password are required'}, status=400)
+
+    if User.objects.filter(username=username).exists():
+        return Response({'detail': 'Username is already taken'}, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return Response({'detail': 'Email is already registered'}, status=400)
+
+    try:
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name
+        )
+        # Log user in immediately upon registration
+        django_login(request, user)
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'detail': str(e)}, status=400)
+
+
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
