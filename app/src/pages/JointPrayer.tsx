@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { scheduleApi, circleApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
