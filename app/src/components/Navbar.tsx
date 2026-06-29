@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import ElevenLogo from '@/components/ElevenLogo'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Search, Bell,
   User, LogOut, Shield, HandHeart, CreditCard
@@ -36,9 +37,8 @@ export default function Navbar() {
   return (
     <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md border-b shadow-sm' : 'bg-white border-b'}`} style={{ borderColor: 'var(--eleven-border)', height: 64 }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
-        <Link to="/" className="flex flex-col items-start">
-          <span className="font-display text-xl font-bold tracking-tight" style={{ color: 'var(--eleven-text)' }}>ELEVEN&trade;</span>
-          <span className="text-[10px] tracking-widest uppercase hidden sm:block" style={{ color: 'var(--eleven-text-muted)', marginTop: -2 }}>Testimony. Prayer. Community.</span>
+        <Link to="/" className="flex items-center">
+          <ElevenLogo height={26} />
         </Link>
         
         <nav className="hidden md:flex items-center gap-1">

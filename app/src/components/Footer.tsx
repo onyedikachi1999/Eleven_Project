@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { Instagram, Youtube, Mail, MessageCircle } from 'lucide-react'
+import ElevenLogo from '@/components/ElevenLogo'
 
 const platformLinks = [
   { to: '/', label: 'Home' },
@@ -23,7 +24,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* Brand */}
           <div>
-            <h3 className="font-display text-xl font-bold mb-3">ELEVEN™</h3>
+            <div className="mb-4">
+              <ElevenLogo height={28} />
+            </div>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--eleven-text-muted)' }}>
               A global community of faith, testimonies, and prayer.
             </p>
