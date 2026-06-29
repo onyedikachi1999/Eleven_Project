@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Search, Bell,
-  User, LogOut, Shield, HandHeart, CreditCard, ChevronDown, ShieldAlert, Info
+  User, LogOut, Shield, HandHeart, CreditCard
 } from 'lucide-react'
 
 const navLinks = [
@@ -16,10 +16,7 @@ const navLinks = [
   { to: '/tv', label: 'TV', icon: Tv },
   { to: '/community', label: 'Community', icon: Users },
   { to: '/joint-prayer', label: 'Joint Prayer', icon: HandHeart },
-]
-
-const resourceLinks = [
-  { to: '/pricing', label: 'Pricing', icon: CreditCard, desc: 'Tiers & support options' },
+  { to: '/pricing', label: 'Pricing', icon: CreditCard },
 ]
 
 export default function Navbar() {
@@ -27,7 +24,6 @@ export default function Navbar() {
   const { user, isAuthenticated, isLoading, isAdmin, logout } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
@@ -60,42 +56,6 @@ export default function Navbar() {
               </Link>
             )
           })}
-
-          {/* Resources Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setDropdownOpen(true)}
-            onMouseLeave={() => setDropdownOpen(false)}
-          >
-            <button
-              className="flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors rounded-md cursor-pointer"
-              style={{ color: resourceLinks.some(l => location.pathname === l.to) ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}
-            >
-              Resources <ChevronDown size={14} className={`transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {dropdownOpen && (
-              <div className="absolute top-full left-0 w-52 bg-white border rounded-xl shadow-lg p-1.5 mt-0 z-50 animate-fade-in" style={{ borderColor: 'var(--eleven-border)' }}>
-                {resourceLinks.map(link => {
-                  const Icon = link.icon
-                  const isSubActive = location.pathname === link.to
-                  return (
-                    <Link
-                      key={link.to}
-                      to={link.to}
-                      onClick={() => setDropdownOpen(false)}
-                      className={`flex items-start gap-2.5 p-2 rounded-lg transition-colors text-left ${isSubActive ? 'bg-stone-50' : 'hover:bg-stone-50'}`}
-                    >
-                      <Icon size={15} className={`mt-0.5 ${isSubActive ? 'text-[var(--eleven-accent)]' : 'text-stone-400'}`} />
-                      <div>
-                        <div className="text-xs font-semibold" style={{ color: 'var(--eleven-text)' }}>{link.label}</div>
-                        <div className="text-[9px]" style={{ color: 'var(--eleven-text-muted)' }}>{link.desc}</div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -142,9 +102,6 @@ export default function Navbar() {
                 <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
                   {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}
                   
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 pt-4 pb-1">Resources</div>
-                  {resourceLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={16} />{link.label}</Link> })}
-
                   {isAuthenticated && (
                     <>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 pt-4 pb-1">Account</div>
