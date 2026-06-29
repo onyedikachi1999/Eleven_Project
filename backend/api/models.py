@@ -250,3 +250,20 @@ class CircleMessage(models.Model):
     class Meta:
         db_table = 'circle_messages'
         ordering = ['created_at']
+
+
+class Slide(models.Model):
+    badge = models.CharField(max_length=50, blank=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    link = models.CharField(max_length=255)
+    cta_text = models.CharField(max_length=50, default='Learn More')
+    bg_color = models.CharField(max_length=100, default='linear-gradient(135deg, #111827 0%, #1e1b4b 100%)')
+    media_type = models.CharField(max_length=10, choices=[('image', 'Image'), ('video', 'Video')], default='image')
+    media_url = models.URLField()
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'slides'
+        ordering = ['order', '-created_at']

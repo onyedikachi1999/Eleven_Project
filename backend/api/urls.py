@@ -11,6 +11,7 @@ router.register(r'circles', views.PrayerCircleViewSet, basename='circle')
 router.register(r'schedules', views.ScheduledPrayerViewSet, basename='schedule')
 router.register(r'forum', views.ForumTopicViewSet, basename='forum')
 router.register(r'users', views.UserViewSet, basename='user')
+router.register(r'slides', views.SlideViewSet, basename='slide')
 
 urlpatterns = [
     path('', include(router.urls)),

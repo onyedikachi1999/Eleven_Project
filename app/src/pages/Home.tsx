@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
-import { testimonyApi, prayerApi, scheduleApi, forumApi } from '@/lib/api'
+import { testimonyApi, prayerApi, scheduleApi, forumApi, slideApi } from '@/lib/api'
 import {
   Play, ChevronDown, Heart, MessageCircle, Bookmark,
   Share2, Users, HandHeart, Church, Flame, Briefcase,
@@ -35,83 +35,73 @@ function HeroSection() {
 
 // ── SlideShow Board ──
 function SlideShowBoard() {
+  const [slides, setSlides] = useState<any[]>([])
   const [current, setCurrent] = useState(0)
   const [isPlaying, setIsPlaying] = useState(true)
-
-  const slides = [
-    {
-      id: 1,
-      type: 'event',
-      badge: 'Featured Event',
-      title: 'Global Prayer Summit 2026',
-      description: 'Join millions worldwide for 24 hours of non-stop prayer, worship, and miracles. Live broadcast on ELEVEN TV.',
-      metaIcon: Calendar,
-      metaText: 'Live: Saturday, July 12th at 6:00 PM (WAT)',
-      ctaText: 'View Schedule',
-      link: '/joint-prayer',
-      bg: 'linear-gradient(135deg, #111827 0%, #1e1b4b 100%)',
-      mediaType: 'image',
-      mediaUrl: 'https://images.unsplash.com/photo-1510915228340-29c85a43dcfe?auto=format&fit=crop&q=80&w=1200'
-    },
-    {
-      id: 2,
-      type: 'ad',
-      badge: 'Partner Spotlight',
-      title: 'Experience Premium Watch Circles',
-      description: 'Create your own prayer circles, host live watch sessions, and share unlimited audio/video testimonies in Naira.',
-      metaIcon: Megaphone,
-      metaText: 'From ₦5,000/mo — Cancel anytime',
-      ctaText: 'Explore Tiers',
-      link: '/pricing',
-      bg: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)',
-      mediaType: 'video',
-      mediaUrl: 'https://assets.mixkit.co/videos/preview/mixkit-worshippers-hands-raised-at-church-summit-41846-large.mp4'
-    },
-    {
-      id: 3,
-      type: 'event',
-      badge: 'Community Gathering',
-      title: 'Annual Youth Testimony Gathering',
-      description: 'An evening of praise, fellowship, and listening to how God is moving in the lives of the next generation.',
-      metaIcon: Calendar,
-      metaText: 'Location: Lagos Faith Center & Online',
-      ctaText: 'Join Circle',
-      link: '/community',
-      bg: 'linear-gradient(135deg, #581c87 0%, #3b0764 100%)',
-      mediaType: 'image',
-      mediaUrl: 'https://images.unsplash.com/photo-1526948128573-703ee1aeb6fa?auto=format&fit=crop&q=80&w=1200'
-    }
-  ]
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isPlaying) return
+    slideApi.list()
+      .then(r => {
+        setSlides(r ? (r.results ?? r) : [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (slides.length <= 1 || !isPlaying) return
     const timer = setInterval(() => {
       setCurrent(prev => (prev + 1) % slides.length)
     }, 6000)
     return () => clearInterval(timer)
   }, [isPlaying, slides.length])
 
-  const nextSlide = () => setCurrent(prev => (prev + 1) % slides.length)
-  const prevSlide = () => setCurrent(prev => (prev - 1 + slides.length) % slides.length)
+  const nextSlide = () => {
+    if (slides.length > 0) {
+      setCurrent(prev => (prev + 1) % slides.length)
+    }
+  }
+  const prevSlide = () => {
+    if (slides.length > 0) {
+      setCurrent(prev => (prev - 1 + slides.length) % slides.length)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 my-8">
+        <Skeleton className="h-[400px] w-full rounded-2xl" />
+      </div>
+    )
+  }
+
+  if (slides.length === 0) return null
 
   return (
     <section className="relative max-w-7xl mx-auto px-4 sm:px-6 my-8 overflow-hidden rounded-2xl group" style={{ height: 400 }}>
       {slides.map((slide, idx) => {
         const isSelected = idx === current
-        const MetaIcon = slide.metaIcon
+        
+        // Smart dynamic icon choice
+        const isVideo = slide.media_type === 'video'
+        const isPrayer = (slide.link || '').includes('prayer')
+        const MetaIcon = isVideo ? Play : isPrayer ? Calendar : Megaphone
+        const metaLabel = isVideo ? 'Video Highlight' : isPrayer ? 'Joint Prayer Session' : 'Announcement'
+
         return (
           <div
             key={slide.id}
             className={`absolute inset-0 w-full h-full flex flex-col justify-end p-6 sm:p-12 transition-all duration-700 ease-in-out ${
               isSelected ? 'opacity-100 z-10 translate-x-0' : 'opacity-0 z-0 translate-x-full'
             }`}
-            style={{ background: slide.bg }}
+            style={{ background: slide.bg_color }}
           >
             {/* Background Media */}
             <div className="absolute inset-0 w-full h-full opacity-40 mix-blend-overlay overflow-hidden">
-              {slide.mediaType === 'video' ? (
+              {slide.media_type === 'video' ? (
                 <video
-                  src={slide.mediaUrl}
+                  src={slide.media_url}
                   autoPlay
                   loop
                   muted
@@ -120,7 +110,7 @@ function SlideShowBoard() {
                 />
               ) : (
                 <img
-                  src={slide.mediaUrl}
+                  src={slide.media_url}
                   alt={slide.title}
                   className="w-full h-full object-cover"
                 />
@@ -131,17 +121,19 @@ function SlideShowBoard() {
 
             {/* Slide Content */}
             <div className="relative z-20 max-w-2xl text-white space-y-3 sm:space-y-4 animate-fade-in-up">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-                <Sparkles size={10} /> {slide.badge}
-              </span>
+              {slide.badge && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                  <Sparkles size={10} /> {slide.badge}
+                </span>
+              )}
               <h2 className="font-display text-2xl sm:text-4xl font-extrabold leading-tight text-white">{slide.title}</h2>
               <p className="text-xs sm:text-sm text-stone-200 line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-xl">{slide.description}</p>
               
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
-                <span className="flex items-center gap-1.5 text-xs text-white/80"><MetaIcon size={14} /> {slide.metaText}</span>
+                <span className="flex items-center gap-1.5 text-xs text-white/80"><MetaIcon size={14} /> {metaLabel}</span>
                 <Link to={slide.link} className="inline-block">
                   <Button className="rounded-full px-5 font-semibold text-xs h-9 text-stone-900 bg-white hover:bg-stone-100 transition-all hover:scale-105">
-                    {slide.ctaText}
+                    {slide.cta_text || 'Learn More'}
                   </Button>
                 </Link>
               </div>
@@ -151,37 +143,43 @@ function SlideShowBoard() {
       })}
 
       {/* Slide Navigation Arrows */}
-      <button
-        onClick={prevSlide}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white/80 hover:text-white hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
-      >
-        <ChevronLeft size={20} />
-      </button>
-      <button
-        onClick={nextSlide}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white/80 hover:text-white hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
-      >
-        <ChevronRight size={20} />
-      </button>
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={prevSlide}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white/80 hover:text-white hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white/80 hover:text-white hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </>
+      )}
 
       {/* Bottom Controls / Indicator Dots */}
-      <div className="absolute bottom-4 right-6 z-30 flex items-center gap-3">
-        <button
-          onClick={() => setIsPlaying(!isPlaying)}
-          className="p-1 rounded bg-black/40 text-white/70 hover:text-white transition-colors cursor-pointer"
-        >
-          {isPlaying ? <Pause size={12} /> : <Play size={12} />}
-        </button>
-        <div className="flex items-center gap-1.5">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrent(idx)}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${idx === current ? 'w-4 bg-white' : 'w-1.5 bg-white/45'}`}
-            />
-          ))}
+      {slides.length > 1 && (
+        <div className="absolute bottom-4 right-6 z-30 flex items-center gap-3">
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="p-1 rounded bg-black/40 text-white/70 hover:text-white transition-colors cursor-pointer"
+          >
+            {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+          </button>
+          <div className="flex items-center gap-1.5">
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrent(idx)}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${idx === current ? 'w-4 bg-white' : 'w-1.5 bg-white/45'}`}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }

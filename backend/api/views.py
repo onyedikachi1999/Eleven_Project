@@ -7,13 +7,14 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import (
     User, Testimony, Prayer, PrayerResponse, Comment,
-    PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply
+    PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply,
+    Slide
 )
 from .serializers import (
     UserSerializer, TestimonyListSerializer, TestimonyCreateSerializer,
     PrayerListSerializer, PrayerCreateSerializer, CommentSerializer,
     PrayerCircleSerializer, ScheduledPrayerSerializer,
-    ForumTopicSerializer, ForumReplySerializer
+    ForumTopicSerializer, ForumReplySerializer, SlideSerializer
 )
 
 
@@ -463,3 +464,20 @@ class AdminViewSet(viewsets.ViewSet):
         users = User.objects.all().order_by('-created_at')
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
+
+
+from rest_framework.permissions import BasePermission
+
+class IsAppAdmin(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+
+class SlideViewSet(viewsets.ModelViewSet):
+    queryset = Slide.objects.all()
+    serializer_class = SlideSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAppAdmin()]

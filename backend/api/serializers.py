@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     User, Testimony, TestimonyReaction, Prayer, PrayerResponse, Comment,
     PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply,
-    CircleMessage
+    CircleMessage, Slide
 )
 
 
@@ -193,3 +193,9 @@ class CircleMemberSerializer(serializers.ModelSerializer):
         if obj.user:
             return obj.user.avatar
         return None
+
+
+class SlideSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Slide
+        fields = '__all__'

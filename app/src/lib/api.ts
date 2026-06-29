@@ -104,3 +104,10 @@ export const adminApi = {
   stats: () => fetchApi('/admin/stats/'),
   users: () => fetchApi('/admin/users/'),
 };
+
+// Slides
+export const slideApi = {
+  list: () => fetchApi('/slides/'),
+  create: (data: Record<string, unknown>) => fetchApi('/slides/', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id: number) => fetchApi(`/slides/${id}/`, { method: 'DELETE' }),
+};
