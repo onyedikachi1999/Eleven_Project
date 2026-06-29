@@ -48,6 +48,10 @@ function TestimonyCard({ t, onSelect, onAmen }: { t: any; onSelect: () => void; 
     e.stopPropagation()
     testimonyApi.amen(t.id).then(onAmen).catch(() => {})
   }
+  const handleCommentClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onSelect()
+  }
   const handleActionClick = (e: React.MouseEvent) => {
     e.stopPropagation()
   }
@@ -71,7 +75,7 @@ function TestimonyCard({ t, onSelect, onAmen }: { t: any; onSelect: () => void; 
         <p className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
         <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: 'var(--eleven-border)' }}>
           <button onClick={handleAmenClick} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {t.amen_count}</button>
-          <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count}</span>
+          <button onClick={handleCommentClick} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count}</button>
           <span className="ml-auto flex items-center gap-3" onClick={handleActionClick}><Bookmark size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /><Share2 size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /></span>
         </div>
       </div>
