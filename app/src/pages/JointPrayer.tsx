@@ -1,0 +1,124 @@
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import { scheduleApi, circleApi } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
+import { Radio, Users, Lock, Globe, Plus, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles } from 'lucide-react'
+
+const categoryIcons: Record<string, typeof Church> = {
+  healing: HandHeart, finance: Briefcase, family: UserPlus,
+  career: Sparkles, deliverance: Flame, general: Church,
+}
+const categoryColors: Record<string, { bg: string; text: string; light: string }> = {
+  healing: { bg: '#E8D5C0', text: '#8B6914', light: '#F5F0EB' },
+  finance: { bg: '#D4E0CC', text: '#4A6B3A', light: '#EEF3EB' },
+  family: { bg: '#D4E0F0', text: '#2E5A8B', light: '#EBF0F5' },
+  career: { bg: '#E8D5E0', text: '#6B3A5A', light: '#F3EBF0' },
+  deliverance: { bg: '#F0E8D4', text: '#8B6B14', light: '#F5F0EB' },
+  general: { bg: '#E8E4DE', text: '#6B6560', light: '#F0EEEB' },
+}
+
+function formatTime(date: string) {
+  return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+function formatDate(date: string | null) {
+  if (!date) return 'Soon'
+  const d = new Date(date), now = new Date()
+  if (d.toDateString() === now.toDateString()) return 'Today'
+  if (new Date(now.getTime() + 86400000).toDateString() === d.toDateString()) return 'Tomorrow'
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+export default function JointPrayer() {
+  const { isAuthenticated } = useAuth()
+  const [schedules, setSchedules] = useState<any[]>([])
+  const [circles, setCircles] = useState<any[]>([])
+  const [liveSession, setLiveSession] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    scheduleApi.upcoming().then(r => { setSchedules(r); setLoading(false) }).catch(() => setLoading(false))
+    scheduleApi.live().then(r => setLiveSession(r)).catch(() => {})
+    circleApi.list().then(r => { setCircles(r.results ?? r) }).catch(() => {})
+  }, [])
+
+  const handleJoin = async (id: number) => {
+    if (!isAuthenticated) { toast('Please sign in to join'); return }
+    try { await circleApi.join(id); toast('Joined circle!') } catch (err: any) { toast.error(err.message) }
+  }
+
+  return (
+    <div>
+      <div className="py-10 px-4 sm:px-6" style={{ background: 'var(--eleven-bg)' }}>
+        <div className="max-w-7xl mx-auto">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--eleven-text)' }}>Joint Prayer</h1>
+          <p className="text-sm sm:text-base" style={{ color: 'var(--eleven-text-secondary)' }}>Pray together in real-time. Join scheduled sessions or create your own prayer circle.</p>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
+        {liveSession && (
+          <section>
+            <div className="flex items-center gap-2 mb-4"><Radio size={18} className="text-red-500 animate-pulse" /><h2 className="font-display text-xl font-semibold" style={{ color: 'var(--eleven-text)' }}>Live Now</h2></div>
+            <div className="rounded-xl p-6 text-white" style={{ background: 'linear-gradient(135deg, #7B8B6F 0%, #8B9B7F 100%)' }}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-display text-lg font-bold mb-1">{liveSession.title}</h3>
+                  <p className="text-sm text-white/80">{liveSession.description}</p>
+                  <div className="flex items-center gap-4 mt-3 text-xs text-white/70"><span className="flex items-center gap-1"><Users size={12} /> {liveSession.participant_count} praying</span></div>
+                </div>
+                <Button className="bg-white hover:bg-white/90 font-semibold text-xs" style={{ color: '#7B8B6F' }}>Join Session</Button>
+              </div>
+            </div>
+          </section>
+        )}
+        <section>
+          <h2 className="font-display text-xl font-semibold mb-4" style={{ color: 'var(--eleven-text)' }}>Scheduled Sessions</h2>
+          {loading ? <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div> :
+            schedules.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {schedules.map(s => (
+                  <div key={s.id} className="bg-white rounded-xl p-5 transition-all hover:shadow-md" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded" style={{ background: s.is_live ? '#C75B5B15' : 'var(--eleven-surface-elevated)', color: s.is_live ? 'var(--eleven-live)' : 'var(--eleven-text-secondary)' }}>{s.is_live ? 'LIVE' : formatDate(s.scheduled_at)}</div>
+                      <span className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>{formatTime(s.scheduled_at)}</span>
+                    </div>
+                    <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{s.title}</h3>
+                    <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{s.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs flex items-center gap-1" style={{ color: 'var(--eleven-text-muted)' }}><Users size={12} /> {s.participant_count} joining</span>
+                      <Button variant="outline" size="sm" className="rounded-full text-xs h-7 px-3" style={{ borderColor: 'var(--eleven-prayer)', color: 'var(--eleven-prayer)' }}>{s.is_live ? 'Join' : 'Remind Me'}</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="text-sm" style={{ color: 'var(--eleven-text-muted)' }}>No upcoming sessions.</p>}
+        </section>
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-semibold" style={{ color: 'var(--eleven-text)' }}>Prayer Circles</h2>
+            <Button variant="outline" size="sm" className="rounded-full text-xs h-8" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}><Plus size={14} className="mr-1" /> Create Circle</Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {circles.map(circle => {
+              const CatIcon = categoryIcons[circle.category] ?? Church
+              const catColor = categoryColors[circle.category] ?? categoryColors.general
+              return (
+                <div key={circle.id} className="bg-white rounded-xl p-5 transition-all hover:shadow-md" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: catColor.light }}><CatIcon size={18} style={{ color: catColor.text }} /></div>
+                  <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{circle.name}</h3>
+                  <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{circle.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs flex items-center gap-1" style={{ color: 'var(--eleven-text-muted)' }}><Users size={12} /> {circle.member_count} members</span>
+                    <span className="flex items-center gap-1 text-[10px]" style={{ color: circle.is_public ? 'var(--eleven-success)' : 'var(--eleven-text-muted)' }}>{circle.is_public ? <Globe size={10} /> : <Lock size={10} />}{circle.is_public ? 'Public' : 'Private'}</span>
+                  </div>
+                  <Button variant="outline" size="sm" className="w-full mt-3 rounded-lg text-xs h-8" style={{ borderColor: 'var(--eleven-prayer)', color: 'var(--eleven-prayer)' }} onClick={() => handleJoin(circle.id)}>Join Circle</Button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
