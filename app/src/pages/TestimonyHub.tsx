@@ -93,7 +93,9 @@ function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; ope
   const [viewCount, setViewCount] = useState(t.view_count)
 
   const loadComments = () => {
-    commentApi.list('testimony', t.id).then(setComments).catch(() => {})
+    commentApi.list('testimony', t.id).then(r => {
+      setComments(r.results ?? r)
+    }).catch(() => {})
   }
 
   useEffect(() => {
