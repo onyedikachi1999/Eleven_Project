@@ -103,6 +103,20 @@ export const commentApi = {
 export const adminApi = {
   stats: () => fetchApi('/admin/stats/'),
   users: () => fetchApi('/admin/users/'),
+  upload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('http://localhost:8000/api/admin/upload/', {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
 };
 
 // Slides

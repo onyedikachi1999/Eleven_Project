@@ -481,3 +481,32 @@ class SlideViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
         return [IsAppAdmin()]
+
+
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import os
+import uuid
+
+@api_view(['POST'])
+def api_upload(request):
+    if not (request.user.is_authenticated and request.user.role == 'admin'):
+        return Response({'detail': 'Forbidden'}, status=403)
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return Response({'detail': 'No file uploaded'}, status=400)
+
+    # Check extension
+    ext = os.path.splitext(uploaded_file.name)[1].lower()
+    if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.webm']:
+        return Response({'detail': 'Unsupported file type'}, status=400)
+
+    # Generate unique filename to avoid conflict
+    filename = f"{uuid.uuid4()}{ext}"
+    path = default_storage.save(os.path.join('slides', filename), ContentFile(uploaded_file.read()))
+
+    # Generate full URL
+    url = request.build_absolute_uri(settings.MEDIA_URL + path)
+    return Response({'url': url})

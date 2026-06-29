@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import {
   Shield, Users, BookOpen, HandHeart, CheckCircle, XCircle, Clock,
-  Flame, Briefcase, UserPlus, Church, Sparkles, Plus, Trash2, Film, Image
+  Flame, Briefcase, UserPlus, Church, Sparkles, Plus, Trash2, Film, Image as ImageIcon
 } from 'lucide-react'
 
 const categoryIcons: Record<string, typeof Church> = {
@@ -56,6 +56,10 @@ export default function AdminPanel() {
   const [slideOrder, setSlideOrder] = useState('0')
   const [submittingSlide, setSubmittingSlide] = useState(false)
 
+  // File Upload states
+  const [mediaSource, setMediaSource] = useState<'file' | 'url'>('file')
+  const [uploadingFile, setUploadingFile] = useState(false)
+
   const load = () => {
     if (user?.role !== 'admin') return
     setLoading(true)
@@ -81,6 +85,30 @@ export default function AdminPanel() {
       load()
     } catch (err: any) {
       toast.error(err.message || 'Failed to remove slide')
+    }
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingFile(true)
+    try {
+      const res = await adminApi.upload(file)
+      setSlideMediaUrl(res.url)
+      
+      // Auto detect media type from extension
+      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+      if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext)) {
+        setSlideMediaType('video')
+      } else {
+        setSlideMediaType('image')
+      }
+      toast.success('Media file uploaded successfully!')
+    } catch (err: any) {
+      toast.error(err.message || 'File upload failed')
+    } finally {
+      setUploadingFile(false)
     }
   }
 
@@ -246,11 +274,79 @@ export default function AdminPanel() {
                     <Input id="slide-order" type="number" value={slideOrder} onChange={e => setSlideOrder(e.target.value)} className="text-xs mt-1" />
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="slide-media-url" className="text-xs">Media URL (Image or Video) *</Label>
-                  <Input id="slide-media-url" value={slideMediaUrl} onChange={e => setSlideMediaUrl(e.target.value)} placeholder="https://..." required className="text-xs mt-1" />
+                
+                {/* Media Source & Picker */}
+                <div className="space-y-2">
+                  <Label className="text-xs">Media Source *</Label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMediaSource('file')}
+                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                        mediaSource === 'file'
+                          ? 'bg-stone-900 text-white border-stone-900'
+                          : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      File Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMediaSource('url')}
+                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                        mediaSource === 'url'
+                          ? 'bg-stone-900 text-white border-stone-900'
+                          : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      External URL
+                    </button>
+                  </div>
+
+                  {mediaSource === 'file' ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="border border-dashed border-stone-300 rounded-lg p-4 text-center cursor-pointer hover:bg-stone-50 relative">
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          onChange={handleFileChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploadingFile}
+                        />
+                        <div className="space-y-1 text-stone-500">
+                          {uploadingFile ? (
+                            <p className="text-xs animate-pulse font-medium">Uploading file...</p>
+                          ) : slideMediaUrl ? (
+                            <p className="text-xs text-green-600 font-semibold">✓ Upload Successful</p>
+                          ) : (
+                            <>
+                              <p className="text-xs font-semibold">Choose image or video file</p>
+                              <p className="text-[10px] text-stone-400">Supports JPG, PNG, GIF, MP4, MOV</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {slideMediaUrl && (
+                        <div className="text-[10px] text-stone-400 truncate bg-stone-50 p-2 rounded max-w-full">
+                          Uploaded: {slideMediaUrl}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="pt-1">
+                      <Input
+                        id="slide-media-url"
+                        value={slideMediaUrl}
+                        onChange={e => setSlideMediaUrl(e.target.value)}
+                        placeholder="https://..."
+                        required
+                        className="text-xs"
+                      />
+                    </div>
+                  )}
                 </div>
-                <Button type="submit" className="w-full text-white font-semibold text-xs h-9 rounded-lg mt-3" style={{ background: 'var(--eleven-accent)' }} disabled={submittingSlide}>
+
+                <Button type="submit" className="w-full text-white font-semibold text-xs h-9 rounded-lg mt-3" style={{ background: 'var(--eleven-accent)' }} disabled={submittingSlide || uploadingFile}>
                   {submittingSlide ? 'Adding...' : 'Add to Slideshow'}
                 </Button>
               </form>

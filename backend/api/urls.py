@@ -21,5 +21,6 @@ urlpatterns = [
     path('auth/me/', views.UserViewSet.as_view({'get': 'me'}), name='auth_me'),
     path('admin/stats/', views.AdminViewSet.as_view({'get': 'list_stats'}), name='admin_stats'),
     path('admin/users/', views.AdminViewSet.as_view({'get': 'list_users'}), name='admin_users'),
+    path('admin/upload/', views.api_upload, name='admin_upload'),
     path('prayers/answered/', views.PrayerViewSet.as_view({'get': 'answered'}), name='prayers_answered'),
 ]
