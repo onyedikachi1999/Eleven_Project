@@ -52,14 +52,20 @@ export default function Navbar() {
               <Link to="/dashboard"><Avatar className="w-8 h-8 cursor-pointer"><AvatarImage src={user?.avatar ?? undefined} /><AvatarFallback className="text-xs font-medium" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user?.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar></Link>
               {isAdmin && <Link to="/admin"><Shield size={18} style={{ color: 'var(--eleven-accent)' }} /></Link>}
             </div> :
-            <Link to="/login" className="hidden md:block"><Button variant="outline" size="sm" className="rounded-full px-4 font-medium text-xs" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Sign In</Button></Link>}
+            <div className="hidden md:flex items-center gap-2">
+              <Link to="/login"><Button variant="outline" size="sm" className="rounded-full px-4 font-medium text-xs" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Sign In</Button></Link>
+              <Link to="/register"><Button size="sm" className="rounded-full px-4 font-medium text-xs text-white" style={{ background: 'var(--eleven-accent)' }}>Register</Button></Link>
+            </div>}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild className="md:hidden"><Button variant="ghost" size="icon" className="h-8 w-8"><Menu size={20} /></Button></SheetTrigger>
             <SheetContent side="right" className="w-72 p-0">
               <div className="flex flex-col h-full pt-12">
                 <div className="px-4 pb-4 border-b" style={{ borderColor: 'var(--eleven-border)' }}>
                   {isAuthenticated && user ? <div className="flex items-center gap-3"><Avatar className="w-10 h-10"><AvatarImage src={user.avatar ?? undefined} /><AvatarFallback style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="font-medium text-sm">{user.name ?? 'User'}</p><p className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>{user.email ?? ''}</p></div></div> :
-                    <Link to="/login" onClick={() => setMobileOpen(false)}><Button className="w-full rounded-full" style={{ background: 'var(--eleven-accent)' }}>Sign In</Button></Link>}
+                    <div className="flex flex-col gap-2 w-full">
+                      <Link to="/login" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="outline" className="w-full rounded-full text-xs h-9" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Sign In</Button></Link>
+                      <Link to="/register" onClick={() => setMobileOpen(false)} className="w-full"><Button className="w-full rounded-full text-xs h-9 text-white" style={{ background: 'var(--eleven-accent)' }}>Register</Button></Link>
+                    </div>}
                 </div>
                 <nav className="flex-1 p-4 flex flex-col gap-1">
                   {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}

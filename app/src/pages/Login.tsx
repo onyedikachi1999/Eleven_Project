@@ -84,10 +84,12 @@ export default function Login() {
             <p className="text-center text-xs" style={{ color: 'var(--eleven-text-muted)' }}>
               Admin: <span className="font-medium" style={{ color: 'var(--eleven-text-secondary)' }}>eleven_admin / eleven2025</span>
             </p>
-            <p className="text-center text-xs" style={{ color: 'var(--eleven-text-muted)' }}>
-              Don't have an account?{' '}
-              <Link to="/register" className="font-semibold" style={{ color: 'var(--eleven-accent)' }}>Sign Up</Link>
-            </p>
+            <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t" style={{ borderColor: 'var(--eleven-border)' }} /></div><div className="relative flex justify-center text-xs"><span className="px-2" style={{ background: 'var(--eleven-bg)', color: 'var(--eleven-text-muted)' }}>New to ELEVEN?</span></div></div>
+            <Link to="/register" className="w-full block">
+              <Button type="button" variant="outline" className="w-full rounded-lg font-semibold h-10" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>
+                Create an Account
+              </Button>
+            </Link>
             <div className="text-center pt-2">
               <Link to="/" className="text-xs" style={{ color: 'var(--eleven-accent)' }}>Back to Home</Link>
             </div>
