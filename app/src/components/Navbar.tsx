@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Search, Bell,
-  User, LogOut, Shield,
+  User, LogOut, Shield, HandHeart,
 } from 'lucide-react'
 
 const navLinks = [
@@ -15,6 +15,7 @@ const navLinks = [
   { to: '/prayer-room', label: 'Prayer Room', icon: Church },
   { to: '/tv', label: 'TV', icon: Tv },
   { to: '/community', label: 'Community', icon: Users },
+  { to: '/joint-prayer', label: 'Joint Prayer', icon: HandHeart },
 ]
 
 export default function Navbar() {
