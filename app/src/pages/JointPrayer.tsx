@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { scheduleApi, circleApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -32,6 +33,7 @@ function formatDate(date: string | null) {
 
 export default function JointPrayer() {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [schedules, setSchedules] = useState<any[]>([])
   const [circles, setCircles] = useState<any[]>([])
   const [liveSession, setLiveSession] = useState<any>(null)
@@ -43,10 +45,41 @@ export default function JointPrayer() {
     circleApi.list().then(r => { setCircles(r.results ?? r) }).catch(() => {})
   }, [])
 
+  const handleJoinSession = (title: string) => {
+    if (!isAuthenticated) {
+      toast('Please sign in to join');
+      navigate('/login');
+      return;
+    }
+    toast.success(`Joined live session: ${title}`);
+  };
+
+  const handleScheduleAction = (s: any) => {
+    if (!isAuthenticated) {
+      toast('Please sign in first');
+      navigate('/login');
+      return;
+    }
+    if (s.is_live) {
+      toast.success(`Joined session: ${s.title}`);
+    } else {
+      toast.success(`Reminder set for: ${s.title}`);
+    }
+  };
+
   const handleJoin = async (id: number) => {
-    if (!isAuthenticated) { toast('Please sign in to join'); return }
-    try { await circleApi.join(id); toast('Joined circle!') } catch (err: any) { toast.error(err.message) }
-  }
+    if (!isAuthenticated) {
+      toast('Please sign in to join');
+      navigate('/login');
+      return;
+    }
+    try {
+      await circleApi.join(id);
+      toast('Joined circle!');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
 
   return (
     <div>
@@ -67,7 +100,7 @@ export default function JointPrayer() {
                   <p className="text-sm text-white/80">{liveSession.description}</p>
                   <div className="flex items-center gap-4 mt-3 text-xs text-white/70"><span className="flex items-center gap-1"><Users size={12} /> {liveSession.participant_count} praying</span></div>
                 </div>
-                <Button className="bg-white hover:bg-white/90 font-semibold text-xs" style={{ color: '#7B8B6F' }}>Join Session</Button>
+                <Button className="bg-white hover:bg-white/90 font-semibold text-xs" style={{ color: '#7B8B6F' }} onClick={() => handleJoinSession(liveSession.title)}>Join Session</Button>
               </div>
             </div>
           </section>
@@ -87,7 +120,7 @@ export default function JointPrayer() {
                     <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{s.description}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs flex items-center gap-1" style={{ color: 'var(--eleven-text-muted)' }}><Users size={12} /> {s.participant_count} joining</span>
-                      <Button variant="outline" size="sm" className="rounded-full text-xs h-7 px-3" style={{ borderColor: 'var(--eleven-prayer)', color: 'var(--eleven-prayer)' }}>{s.is_live ? 'Join' : 'Remind Me'}</Button>
+                      <Button variant="outline" size="sm" className="rounded-full text-xs h-7 px-3" style={{ borderColor: 'var(--eleven-prayer)', color: 'var(--eleven-prayer)' }} onClick={() => handleScheduleAction(s)}>{s.is_live ? 'Join' : 'Remind Me'}</Button>
                     </div>
                   </div>
                 ))}
