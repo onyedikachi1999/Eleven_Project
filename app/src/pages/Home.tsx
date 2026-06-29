@@ -8,29 +8,7 @@ import {
   Share2, Users, HandHeart, Church, Flame, Briefcase,
   UserPlus, Sparkles, ArrowRight,
 } from 'lucide-react'
-
-const categoryIcons: Record<string, typeof Heart> = {
-  healing: HandHeart, finance: Briefcase, family: UserPlus,
-  career: Sparkles, deliverance: Flame, general: Church,
-}
-const categoryColors: Record<string, { bg: string; text: string }> = {
-  healing: { bg: '#E8D5C0', text: '#8B6914' },
-  finance: { bg: '#D4E0CC', text: '#4A6B3A' },
-  family: { bg: '#D4E0F0', text: '#2E5A8B' },
-  career: { bg: '#E8D5E0', text: '#6B3A5A' },
-  deliverance: { bg: '#F0E8D4', text: '#8B6B14' },
-  general: { bg: '#E8E4DE', text: '#6B6560' },
-}
-
-function timeAgo(date: string) {
-  const d = new Date(date), now = new Date()
-  const diff = Math.floor((now.getTime() - d.getTime()) / 1000)
-  if (diff < 60) return 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
-  return d.toLocaleDateString()
-}
+import { TestimonyCard, TestimonyDetailModal, categoryIcons, categoryColors, timeAgo } from '@/components/TestimonyCardShared'
 
 // ── Hero Section ──
 function HeroSection() {
@@ -53,45 +31,37 @@ function HeroSection() {
   )
 }
 
-// ── Testimony Card ──
-function TestimonyCard({ t }: { t: any }) {
-  const CatIcon = categoryIcons[t.category] ?? Heart
-  const catColor = categoryColors[t.category] ?? categoryColors.general
-  const handleAmen = () => { testimonyApi.amen(t.id).catch(() => {}) }
-
-  return (
-    <div className="group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderLeft: `3px solid ${catColor.bg}` }}>
-      {t.thumbnail_url && (
-        <div className="relative aspect-video overflow-hidden">
-          <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          {t.type === 'video' && <div className="absolute inset-0 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-md"><Play size={20} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>}
-        </div>
-      )}
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-2.5">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: t.is_anonymous ? '#E8E4DE' : catColor.bg, color: t.is_anonymous ? '#6B6560' : catColor.text }}>{t.is_anonymous ? 'A' : (t.author_name ?? 'U').charAt(0).toUpperCase()}</div>
-          <span className="text-xs font-medium" style={{ color: 'var(--eleven-text-secondary)' }}>{t.is_anonymous ? 'Anonymous' : (t.author_name ?? 'User')}</span>
-          <span className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}> &middot; {timeAgo(t.created_at)}</span>
-          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: catColor.bg, color: catColor.text }}><CatIcon size={10} />{t.category}</span>
-        </div>
-        <h3 className="font-display text-base font-semibold mb-1.5 line-clamp-2" style={{ color: 'var(--eleven-text)' }}>{t.title}</h3>
-        <p className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
-        <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: 'var(--eleven-border)' }}>
-          <button onClick={(e) => { e.stopPropagation(); handleAmen() }} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {t.amen_count}</button>
-          <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count}</span>
-          <span className="ml-auto flex items-center gap-3"><Bookmark size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /><Share2 size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /></span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Trending Section ──
 function TrendingSection() {
   const [testimonies, setTestimonies] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedTestimony, setSelectedTestimony] = useState<any>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
-  useEffect(() => { testimonyApi.list({ sort: 'popular', limit: '6' }).then(r => { setTestimonies(r.results ?? r); setIsLoading(false) }).catch(() => setIsLoading(false)) }, [])
+  const load = () => {
+    testimonyApi.list({ sort: 'popular', limit: '6' }).then(r => {
+      const results = r.results ?? r
+      setTestimonies(results)
+      setIsLoading(false)
+      if (selectedTestimony) {
+        const updated = results.find((item: any) => item.id === selectedTestimony.id)
+        if (updated) setSelectedTestimony(updated)
+      }
+    }).catch(() => setIsLoading(false))
+  }
+
+  const loadWithoutSpinner = () => {
+    testimonyApi.list({ sort: 'popular', limit: '6' }).then(r => {
+      const results = r.results ?? r
+      setTestimonies(results)
+      if (selectedTestimony) {
+        const updated = results.find((item: any) => item.id === selectedTestimony.id)
+        if (updated) setSelectedTestimony(updated)
+      }
+    }).catch(() => {})
+  }
+
+  useEffect(() => { load() }, [])
 
   return (
     <section className="py-16 px-4 sm:px-6 max-w-7xl mx-auto">
@@ -100,7 +70,25 @@ function TrendingSection() {
         <Link to="/testimonies" className="text-sm font-medium flex items-center gap-1" style={{ color: 'var(--eleven-accent)' }}>View All <ArrowRight size={14} /></Link>
       </div>
       {isLoading ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[1,2,3].map(i => <Skeleton key={i} className="h-72 rounded-xl" />)}</div> :
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{testimonies.map(t => <TestimonyCard key={t.id} t={t} />)}</div>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {testimonies.map(t => (
+            <TestimonyCard 
+              key={t.id} 
+              t={t} 
+              onSelect={() => { setSelectedTestimony(t); setDetailOpen(true) }} 
+              onAmen={loadWithoutSpinner} 
+            />
+          ))}
+        </div>}
+
+      {selectedTestimony && (
+        <TestimonyDetailModal
+          t={selectedTestimony}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          onUpdate={loadWithoutSpinner}
+        />
+      )}
     </section>
   )
 }
