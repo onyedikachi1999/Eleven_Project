@@ -103,6 +103,71 @@ export default function TestimonyHub() {
     }).catch(() => {})
   }
 
+  const handleToggleReaction = async (testimonyId: number) => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to react')
+      return
+    }
+
+    let previousTestimony: any = null
+    setTestimonies(prev => prev.map(t => {
+      if (t.id === testimonyId) {
+        previousTestimony = { ...t }
+        const nextReacted = !t.has_reacted
+        return {
+          ...t,
+          has_reacted: nextReacted,
+          amen_count: nextReacted ? t.amen_count + 1 : Math.max(0, t.amen_count - 1)
+        }
+      }
+      return t
+    }))
+
+    setSelectedTestimony(prev => {
+      if (prev && prev.id === testimonyId) {
+        const nextReacted = !prev.has_reacted
+        return {
+          ...prev,
+          has_reacted: nextReacted,
+          amen_count: nextReacted ? prev.amen_count + 1 : Math.max(0, prev.amen_count - 1)
+        }
+      }
+      return prev
+    })
+
+    try {
+      const res = await testimonyApi.amen(testimonyId)
+      if (res) {
+        setTestimonies(prev => prev.map(t => {
+          if (t.id === testimonyId) {
+            return {
+              ...t,
+              has_reacted: res.reacted,
+              amen_count: res.amen_count
+            }
+          }
+          return t
+        }))
+        setSelectedTestimony(prev => {
+          if (prev && prev.id === testimonyId) {
+            return {
+              ...prev,
+              has_reacted: res.reacted,
+              amen_count: res.amen_count
+            }
+          }
+          return prev
+        })
+      }
+    } catch (err) {
+      if (previousTestimony) {
+        setTestimonies(prev => prev.map(t => t.id === testimonyId ? previousTestimony : t))
+        setSelectedTestimony(prev => (prev && prev.id === testimonyId) ? previousTestimony : prev)
+      }
+      toast.error('Failed to update reaction')
+    }
+  }
+
   useEffect(() => { load() }, [activeCategory, activeSort])
 
   const filtered = testimonies.filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.content.toLowerCase().includes(search.toLowerCase()))
@@ -129,7 +194,7 @@ export default function TestimonyHub() {
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {isLoading ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} className="h-72 rounded-xl" />)}</div> :
-          filtered.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{filtered.map(t => <TestimonyCard key={t.id} t={t} onSelect={() => { setSelectedTestimony(t); setDetailOpen(true) }} onAmen={loadWithoutSpinner} />)}</div> :
+          filtered.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{filtered.map(t => <TestimonyCard key={t.id} t={t} onSelect={() => { setSelectedTestimony(t); setDetailOpen(true) }} onAmen={handleToggleReaction} />)}</div> :
           <div className="text-center py-20"><p className="text-lg font-medium mb-2" style={{ color: 'var(--eleven-text)' }}>No testimonies found</p><p className="text-sm" style={{ color: 'var(--eleven-text-secondary)' }}>{search ? 'Try a different search term' : 'Be the first to share your story!'}</p></div>}
       </div>
 
@@ -138,7 +203,7 @@ export default function TestimonyHub() {
           t={selectedTestimony}
           open={detailOpen}
           onOpenChange={setDetailOpen}
-          onUpdate={loadWithoutSpinner}
+          onUpdate={(id) => id ? handleToggleReaction(id) : loadWithoutSpinner()}
         />
       )}
     </div>

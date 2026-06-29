@@ -37,21 +37,16 @@ export function timeAgo(date: string) {
 interface TestimonyCardProps {
   t: any
   onSelect: () => void
-  onAmen: () => void
+  onAmen: (id: number) => void
 }
 
 export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
-  const { isAuthenticated } = useAuth()
   const CatIcon = categoryIcons[t.category] ?? Heart
   const catColor = categoryColors[t.category] ?? categoryColors.general
 
   const handleAmenClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!isAuthenticated) {
-      toast.error('Please sign in first to react')
-      return
-    }
-    testimonyApi.amen(t.id).then(onAmen).catch(() => {})
+    onAmen(t.id)
   }
 
   const handleCommentClick = (e: React.MouseEvent) => {
@@ -94,7 +89,7 @@ interface TestimonyDetailModalProps {
   t: any
   open: boolean
   onOpenChange: (open: boolean) => void
-  onUpdate: () => void
+  onUpdate: (id?: number) => void
 }
 
 export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: TestimonyDetailModalProps) {
@@ -133,24 +128,8 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
     }
   }, [open, t.id])
 
-  const handleAmen = async () => {
-    if (!isAuthenticated) {
-      toast.error('Please sign in first to react')
-      return
-    }
-    try {
-      const res = await testimonyApi.amen(t.id)
-      if (res) {
-        setAmenCount(res.amen_count)
-        setHasReacted(res.reacted)
-      } else {
-        setAmenCount(prev => hasReacted ? prev - 1 : prev + 1)
-        setHasReacted(!hasReacted)
-      }
-      onUpdate()
-    } catch (err) {
-      // Ignore
-    }
+  const handleAmen = () => {
+    onUpdate(t.id)
   }
 
   const handlePostComment = async (e: React.FormEvent) => {

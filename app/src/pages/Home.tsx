@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 import { testimonyApi, prayerApi, scheduleApi, forumApi } from '@/lib/api'
 import {
   Play, ChevronDown, Heart, MessageCircle, Bookmark,
@@ -33,6 +35,7 @@ function HeroSection() {
 
 // ── Trending Section ──
 function TrendingSection() {
+  const { isAuthenticated } = useAuth()
   const [testimonies, setTestimonies] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTestimony, setSelectedTestimony] = useState<any>(null)
@@ -61,6 +64,71 @@ function TrendingSection() {
     }).catch(() => {})
   }
 
+  const handleToggleReaction = async (testimonyId: number) => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to react')
+      return
+    }
+
+    let previousTestimony: any = null
+    setTestimonies(prev => prev.map(t => {
+      if (t.id === testimonyId) {
+        previousTestimony = { ...t }
+        const nextReacted = !t.has_reacted
+        return {
+          ...t,
+          has_reacted: nextReacted,
+          amen_count: nextReacted ? t.amen_count + 1 : Math.max(0, t.amen_count - 1)
+        }
+      }
+      return t
+    }))
+
+    setSelectedTestimony(prev => {
+      if (prev && prev.id === testimonyId) {
+        const nextReacted = !prev.has_reacted
+        return {
+          ...prev,
+          has_reacted: nextReacted,
+          amen_count: nextReacted ? prev.amen_count + 1 : Math.max(0, prev.amen_count - 1)
+        }
+      }
+      return prev
+    })
+
+    try {
+      const res = await testimonyApi.amen(testimonyId)
+      if (res) {
+        setTestimonies(prev => prev.map(t => {
+          if (t.id === testimonyId) {
+            return {
+              ...t,
+              has_reacted: res.reacted,
+              amen_count: res.amen_count
+            }
+          }
+          return t
+        }))
+        setSelectedTestimony(prev => {
+          if (prev && prev.id === testimonyId) {
+            return {
+              ...prev,
+              has_reacted: res.reacted,
+              amen_count: res.amen_count
+            }
+          }
+          return prev
+        })
+      }
+    } catch (err) {
+      if (previousTestimony) {
+        setTestimonies(prev => prev.map(t => t.id === testimonyId ? previousTestimony : t))
+        setSelectedTestimony(prev => (prev && prev.id === testimonyId) ? previousTestimony : prev)
+      }
+      toast.error('Failed to update reaction')
+    }
+  }
+
   useEffect(() => { load() }, [])
 
   return (
@@ -76,7 +144,7 @@ function TrendingSection() {
               key={t.id} 
               t={t} 
               onSelect={() => { setSelectedTestimony(t); setDetailOpen(true) }} 
-              onAmen={loadWithoutSpinner} 
+              onAmen={handleToggleReaction} 
             />
           ))}
         </div>}
@@ -86,7 +154,7 @@ function TrendingSection() {
           t={selectedTestimony}
           open={detailOpen}
           onOpenChange={setDetailOpen}
-          onUpdate={loadWithoutSpinner}
+          onUpdate={(id) => id ? handleToggleReaction(id) : loadWithoutSpinner()}
         />
       )}
     </section>
