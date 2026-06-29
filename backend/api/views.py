@@ -425,6 +425,22 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'detail': 'Not authenticated'}, status=401)
         return Response(UserSerializer(request.user).data)
 
+    @action(detail=False, methods=['post'], url_path='upgrade')
+    def upgrade_subscription(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        plan = request.data.get('plan')
+        if plan not in ['free', 'regular', 'premium']:
+            return Response({'detail': 'Invalid plan choice'}, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        user.subscription_plan = plan
+        user.save()
+        return Response({
+            'success': True,
+            'subscription_plan': user.subscription_plan,
+            'message': f'Subscription upgraded to {plan.capitalize()} successfully!'
+        })
+
 
 class AdminViewSet(viewsets.ViewSet):
     def list_stats(self, request):

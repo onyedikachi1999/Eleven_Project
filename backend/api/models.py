@@ -6,6 +6,11 @@ class User(AbstractUser):
     avatar = models.URLField(blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     role = models.CharField(max_length=10, choices=[('user', 'User'), ('admin', 'Admin')], default='user')
+    subscription_plan = models.CharField(
+        max_length=15,
+        choices=[('free', 'Free'), ('regular', 'Regular'), ('premium', 'Premium')],
+        default='free'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_sign_in_at = models.DateTimeField(auto_now=True)

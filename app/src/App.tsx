@@ -10,6 +10,7 @@ import ElevenTV from './pages/ElevenTV'
 import JointPrayer from './pages/JointPrayer'
 import PrayerCircleDetail from './pages/PrayerCircleDetail'
 import CommunityForum from './pages/CommunityForum'
+import Pricing from './pages/Pricing'
 import Dashboard from './pages/Dashboard'
 import AdminPanel from './pages/AdminPanel'
 import About from './pages/About'
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/joint-prayer" element={<JointPrayer />} />
           <Route path="/prayer-circle/:id" element={<PrayerCircleDetail />} />
           <Route path="/community" element={<CommunityForum />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/about" element={<About />} />

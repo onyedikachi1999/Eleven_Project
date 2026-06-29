@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { testimonyApi, prayerApi } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BookOpen, HandHeart, Heart, MessageCircle, Clock, BookMarked, Users } from 'lucide-react'
@@ -56,10 +57,24 @@ export default function Dashboard() {
             <AvatarImage src={user.avatar ?? undefined} />
             <AvatarFallback className="text-2xl font-display font-bold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1" style={{ color: 'var(--eleven-text)' }}>{user.name ?? 'User'}</h1>
-            <p className="text-sm mb-2" style={{ color: 'var(--eleven-text-secondary)' }}>{user.email ?? ''}</p>
-            {user.bio && <p className="text-sm max-w-xl" style={{ color: 'var(--eleven-text-secondary)' }}>{user.bio}</p>}
+          <div className="flex-1 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <h1 className="font-display text-2xl sm:text-3xl font-bold" style={{ color: 'var(--eleven-text)' }}>{user.name ?? 'User'}</h1>
+                <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white border capitalize" style={{ color: 'var(--eleven-text-secondary)' }}>
+                  {user.subscription_plan || 'free'} Plan
+                </span>
+              </div>
+              <p className="text-sm mb-2" style={{ color: 'var(--eleven-text-secondary)' }}>{user.email ?? ''}</p>
+              {user.bio && <p className="text-sm max-w-xl" style={{ color: 'var(--eleven-text-secondary)' }}>{user.bio}</p>}
+            </div>
+            <div className="flex-shrink-0">
+              <Link to="/pricing">
+                <Button className="rounded-full px-5 text-xs h-9 text-white font-semibold" style={{ background: 'var(--eleven-accent)' }}>
+                  Manage Subscription
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">

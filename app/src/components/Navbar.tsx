@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Search, Bell,
-  User, LogOut, Shield, HandHeart,
+  User, LogOut, Shield, HandHeart, CreditCard,
 } from 'lucide-react'
 
 const navLinks = [
@@ -16,6 +16,7 @@ const navLinks = [
   { to: '/tv', label: 'TV', icon: Tv },
   { to: '/community', label: 'Community', icon: Users },
   { to: '/joint-prayer', label: 'Joint Prayer', icon: HandHeart },
+  { to: '/pricing', label: 'Pricing', icon: CreditCard },
 ]
 
 export default function Navbar() {
@@ -62,11 +63,28 @@ export default function Navbar() {
             <SheetContent side="right" className="w-72 p-0">
               <div className="flex flex-col h-full pt-12">
                 <div className="px-4 pb-4 border-b" style={{ borderColor: 'var(--eleven-border)' }}>
-                  {isAuthenticated && user ? <div className="flex items-center gap-3"><Avatar className="w-10 h-10"><AvatarImage src={user.avatar ?? undefined} /><AvatarFallback style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="font-medium text-sm">{user.name ?? 'User'}</p><p className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>{user.email ?? ''}</p></div></div> :
+                  {isAuthenticated && user ? (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={user.avatar ?? undefined} />
+                        <AvatarFallback style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-sm">{user.name ?? 'User'}</p>
+                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 border capitalize">
+                            {user.subscription_plan || 'free'}
+                          </span>
+                        </div>
+                        <p className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>{user.email ?? ''}</p>
+                      </div>
+                    </div>
+                  ) : (
                     <div className="flex flex-col gap-2 w-full">
                       <Link to="/login" onClick={() => setMobileOpen(false)} className="w-full"><Button variant="outline" className="w-full rounded-full text-xs h-9" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Sign In</Button></Link>
                       <Link to="/register" onClick={() => setMobileOpen(false)} className="w-full"><Button className="w-full rounded-full text-xs h-9 text-white" style={{ background: 'var(--eleven-accent)' }}>Register</Button></Link>
-                    </div>}
+                    </div>
+                  )}
                 </div>
                 <nav className="flex-1 p-4 flex flex-col gap-1">
                   {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}

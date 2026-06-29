@@ -11,6 +11,7 @@ interface User {
   avatar?: string;
   bio?: string;
   role: 'user' | 'admin';
+  subscription_plan?: 'free' | 'regular' | 'premium';
   created_at: string;
 }
 

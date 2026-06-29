@@ -27,6 +27,7 @@ export const authApi = {
   login: (username: string, password: string) => fetchApi('/auth/login/', { method: 'POST', body: JSON.stringify({ username, password }) }),
   register: (data: Record<string, unknown>) => fetchApi('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => fetchApi('/auth/logout/', { method: 'POST' }),
+  upgrade: (plan: 'free' | 'regular' | 'premium') => fetchApi('/users/upgrade/', { method: 'POST', body: JSON.stringify({ plan }) }),
 };
 
 // Testimonies
