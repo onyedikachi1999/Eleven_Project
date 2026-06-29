@@ -89,17 +89,45 @@ function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; ope
   const [commentText, setCommentText] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [amenCount, setAmenCount] = useState(t.amen_count)
+  const [viewCount, setViewCount] = useState(t.view_count)
 
   const loadComments = () => {
     commentApi.list('testimony', t.id).then(setComments).catch(() => {})
   }
 
   useEffect(() => {
+    setAmenCount(t.amen_count)
+    setViewCount(t.view_count)
+  }, [t.id, t.amen_count, t.view_count])
+
+  useEffect(() => {
     if (open) {
       loadComments()
-      testimonyApi.incrementView(t.id).then(onUpdate).catch(() => {})
+      testimonyApi.incrementView(t.id).then((res) => {
+        if (res && typeof res.view_count === 'number') {
+          setViewCount(res.view_count)
+        } else {
+          setViewCount(prev => prev + 1)
+        }
+        onUpdate()
+      }).catch(() => {})
     }
   }, [open, t.id])
+
+  const handleAmen = async () => {
+    try {
+      const res = await testimonyApi.amen(t.id)
+      if (res && typeof res.amen_count === 'number') {
+        setAmenCount(res.amen_count)
+      } else {
+        setAmenCount(prev => prev + 1)
+      }
+      onUpdate()
+    } catch (err) {
+      // Ignore
+    }
+  }
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -144,13 +172,13 @@ function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; ope
         </div>
 
         <div className="flex items-center gap-4 py-3 border-t border-b" style={{ borderColor: 'var(--eleven-border)' }}>
-          <button onClick={() => testimonyApi.amen(t.id).then(onUpdate).catch(() => {})} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {t.amen_count} Amens</button>
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count} Comments</span>
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--eleven-text-muted)' }}>Viewed {t.view_count} times</span>
+          <button onClick={handleAmen} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {amenCount} Amens</button>
+          <button onClick={() => document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {comments.length} Comments</button>
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--eleven-text-muted)' }}>Viewed {viewCount} times</span>
         </div>
 
         <div className="mt-6 space-y-4">
-          <h3 className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>Comments</h3>
+          <h3 id="comments-section" className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>Comments</h3>
           {isAuthenticated ? (
             <form onSubmit={handlePostComment} className="space-y-3">
               <Textarea value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Write an encouraging word..." required rows={2} className="text-xs resize-none" />
