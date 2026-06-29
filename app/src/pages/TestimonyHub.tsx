@@ -42,10 +42,15 @@ function timeAgo(date: string) {
 }
 
 function TestimonyCard({ t, onSelect, onAmen }: { t: any; onSelect: () => void; onAmen: () => void }) {
+  const { isAuthenticated } = useAuth()
   const CatIcon = categoryIcons[t.category] ?? Heart
   const catColor = categoryColors[t.category] ?? categoryColors.general
   const handleAmenClick = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to react')
+      return
+    }
     testimonyApi.amen(t.id).then(onAmen).catch(() => {})
   }
   const handleCommentClick = (e: React.MouseEvent) => {
@@ -74,7 +79,7 @@ function TestimonyCard({ t, onSelect, onAmen }: { t: any; onSelect: () => void; 
         <h3 className="font-display text-base font-semibold mb-1.5 line-clamp-2" style={{ color: 'var(--eleven-text)' }}>{t.title}</h3>
         <p className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
         <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: 'var(--eleven-border)' }}>
-          <button onClick={handleAmenClick} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {t.amen_count}</button>
+          <button onClick={handleAmenClick} className={`flex items-center gap-1 text-xs font-medium transition-all duration-300 ${t.has_reacted ? 'text-red-500 scale-105 font-semibold' : 'text-stone-400 hover:text-red-500'}`}><Heart size={14} fill={t.has_reacted ? 'currentColor' : 'none'} className={`transition-transform duration-300 ${t.has_reacted ? 'scale-110 text-red-500' : ''}`} /> {t.amen_count} {t.has_reacted ? 'Reacted' : 'Reaction'}</button>
           <button onClick={handleCommentClick} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count}</button>
           <span className="ml-auto flex items-center gap-3" onClick={handleActionClick}><Bookmark size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /><Share2 size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /></span>
         </div>
@@ -91,6 +96,7 @@ function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; ope
   const [submitting, setSubmitting] = useState(false)
   const [amenCount, setAmenCount] = useState(t.amen_count)
   const [viewCount, setViewCount] = useState(t.view_count)
+  const [hasReacted, setHasReacted] = useState(t.has_reacted)
 
   const loadComments = () => {
     commentApi.list('testimony', t.id).then(r => {
@@ -101,7 +107,8 @@ function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; ope
   useEffect(() => {
     setAmenCount(t.amen_count)
     setViewCount(t.view_count)
-  }, [t.id, t.amen_count, t.view_count])
+    setHasReacted(t.has_reacted)
+  }, [t.id, t.amen_count, t.view_count, t.has_reacted])
 
   useEffect(() => {
     if (open) {
@@ -118,12 +125,18 @@ function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; ope
   }, [open, t.id])
 
   const handleAmen = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to react')
+      return
+    }
     try {
       const res = await testimonyApi.amen(t.id)
-      if (res && typeof res.amen_count === 'number') {
+      if (res) {
         setAmenCount(res.amen_count)
+        setHasReacted(res.reacted)
       } else {
-        setAmenCount(prev => prev + 1)
+        setAmenCount(prev => hasReacted ? prev - 1 : prev + 1)
+        setHasReacted(!hasReacted)
       }
       onUpdate()
     } catch (err) {
@@ -174,7 +187,7 @@ function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; ope
         </div>
 
         <div className="flex items-center gap-4 py-3 border-t border-b" style={{ borderColor: 'var(--eleven-border)' }}>
-          <button onClick={handleAmen} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {amenCount} Amens</button>
+          <button onClick={handleAmen} className={`flex items-center gap-1.5 text-xs font-medium transition-all duration-300 ${hasReacted ? 'text-red-500 scale-105 font-semibold' : 'text-stone-400 hover:text-red-500'}`}><Heart size={14} fill={hasReacted ? 'currentColor' : 'none'} className={`transition-transform duration-300 ${hasReacted ? 'scale-110 text-red-500' : ''}`} /> {amenCount} {hasReacted ? 'Reacted' : 'Reaction'}</button>
           <button onClick={() => document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {comments.length} Comments</button>
           <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--eleven-text-muted)' }}>Viewed {viewCount} times</span>
         </div>

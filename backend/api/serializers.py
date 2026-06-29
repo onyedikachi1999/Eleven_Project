@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    User, Testimony, Prayer, PrayerResponse, Comment,
+    User, Testimony, TestimonyReaction, Prayer, PrayerResponse, Comment,
     PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply
 )
 
@@ -25,12 +25,13 @@ class AuthorField(serializers.Field):
 class TestimonyListSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
     author_avatar = serializers.SerializerMethodField()
+    has_reacted = serializers.SerializerMethodField()
 
     class Meta:
         model = Testimony
         fields = ['id', 'title', 'content', 'category', 'type', 'media_url', 'thumbnail_url',
                   'is_anonymous', 'status', 'prayer_count', 'amen_count', 'view_count',
-                  'created_at', 'user_id', 'author_name', 'author_avatar']
+                  'created_at', 'user_id', 'author_name', 'author_avatar', 'has_reacted']
 
     def get_author_name(self, obj):
         if obj.is_anonymous or obj.user is None:
@@ -41,6 +42,12 @@ class TestimonyListSerializer(serializers.ModelSerializer):
         if obj.is_anonymous or obj.user is None:
             return None
         return obj.user.avatar
+
+    def get_has_reacted(self, obj):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            return TestimonyReaction.objects.filter(testimony=obj, user=request.user).exists()
+        return False
 
 
 class TestimonyCreateSerializer(serializers.ModelSerializer):

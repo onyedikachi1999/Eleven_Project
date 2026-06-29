@@ -57,10 +57,21 @@ class TestimonyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def amen(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
         t = self.get_object()
-        t.amen_count += 1
-        t.save()
-        return Response({'amen_count': t.amen_count})
+        from .models import TestimonyReaction
+        reaction, created = TestimonyReaction.objects.get_or_create(testimony=t, user=request.user)
+        if not created:
+            reaction.delete()
+            if t.amen_count > 0:
+                t.amen_count -= 1
+            t.save()
+            return Response({'reacted': False, 'amen_count': t.amen_count})
+        else:
+            t.amen_count += 1
+            t.save()
+            return Response({'reacted': True, 'amen_count': t.amen_count})
 
     @action(detail=True, methods=['post'])
     def increment_view(self, request, pk=None):

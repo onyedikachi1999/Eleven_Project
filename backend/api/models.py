@@ -130,6 +130,16 @@ class Comment(models.Model):
         ordering = ['-created_at']
 
 
+class TestimonyReaction(models.Model):
+    testimony = models.ForeignKey(Testimony, on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='testimony_reactions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'testimony_reactions'
+        unique_together = ['testimony', 'user']
+
+
 class SavedItem(models.Model):
     ITEM_CHOICES = [
         ('testimony', 'Testimony'),
