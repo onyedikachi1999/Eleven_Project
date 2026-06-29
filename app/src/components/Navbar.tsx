@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Search, Bell,
-  User, LogOut, Shield, HandHeart, CreditCard,
+  User, LogOut, Shield, HandHeart, CreditCard, ChevronDown, ShieldAlert, Info
 } from 'lucide-react'
 
 const navLinks = [
@@ -16,7 +16,12 @@ const navLinks = [
   { to: '/tv', label: 'TV', icon: Tv },
   { to: '/community', label: 'Community', icon: Users },
   { to: '/joint-prayer', label: 'Joint Prayer', icon: HandHeart },
-  { to: '/pricing', label: 'Pricing', icon: CreditCard },
+]
+
+const resourceLinks = [
+  { to: '/pricing', label: 'Pricing', icon: CreditCard, desc: 'Tiers & support options' },
+  { to: '/guidelines', label: 'Guidelines', icon: ShieldAlert, desc: 'Rules & guidelines' },
+  { to: '/about', label: 'About Us', icon: Info, desc: 'Our mission & heart' },
 ]
 
 export default function Navbar() {
@@ -24,6 +29,7 @@ export default function Navbar() {
   const { user, isAuthenticated, isLoading, isAdmin, logout } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
@@ -40,12 +46,60 @@ export default function Navbar() {
           <span className="font-display text-xl font-bold tracking-tight" style={{ color: 'var(--eleven-text)' }}>ELEVEN&trade;</span>
           <span className="text-[10px] tracking-widest uppercase hidden sm:block" style={{ color: 'var(--eleven-text-muted)', marginTop: -2 }}>Testimony. Prayer. Community.</span>
         </Link>
+        
         <nav className="hidden md:flex items-center gap-1">
           {navLinks.map(link => {
             const isActive = location.pathname === link.to
-            return <Link key={link.to} to={link.to} className={`relative px-3 py-2 text-sm font-medium transition-colors rounded-md`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}>{link.label}{isActive && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full" style={{ background: 'var(--eleven-accent)' }} />}</Link>
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="relative px-3 py-2 text-sm font-medium transition-colors rounded-md"
+                style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}
+              >
+                {link.label}
+                {isActive && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full" style={{ background: 'var(--eleven-accent)' }} />}
+              </Link>
+            )
           })}
+
+          {/* Resources Dropdown */}
+          <div
+            className="relative"
+            onMouseEnter={() => setDropdownOpen(true)}
+            onMouseLeave={() => setDropdownOpen(false)}
+          >
+            <button
+              className="flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors rounded-md cursor-pointer"
+              style={{ color: resourceLinks.some(l => location.pathname === l.to) ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}
+            >
+              Resources <ChevronDown size={14} className={`transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {dropdownOpen && (
+              <div className="absolute top-full left-0 w-52 bg-white border rounded-xl shadow-lg p-1.5 mt-0 z-50 animate-fade-in" style={{ borderColor: 'var(--eleven-border)' }}>
+                {resourceLinks.map(link => {
+                  const Icon = link.icon
+                  const isSubActive = location.pathname === link.to
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setDropdownOpen(false)}
+                      className={`flex items-start gap-2.5 p-2 rounded-lg transition-colors text-left ${isSubActive ? 'bg-stone-50' : 'hover:bg-stone-50'}`}
+                    >
+                      <Icon size={15} className={`mt-0.5 ${isSubActive ? 'text-[var(--eleven-accent)]' : 'text-stone-400'}`} />
+                      <div>
+                        <div className="text-xs font-semibold" style={{ color: 'var(--eleven-text)' }}>{link.label}</div>
+                        <div className="text-[9px]" style={{ color: 'var(--eleven-text-muted)' }}>{link.desc}</div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </nav>
+
         <div className="flex items-center gap-2">
           <button className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex" style={{ color: 'var(--eleven-text-secondary)' }}><Search size={18} /></button>
           {isAuthenticated && <button className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex relative" style={{ color: 'var(--eleven-text-secondary)' }}><Bell size={18} /><span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" /></button>}
@@ -58,6 +112,7 @@ export default function Navbar() {
               <Link to="/login"><Button variant="outline" size="sm" className="rounded-full px-4 font-medium text-xs" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Sign In</Button></Link>
               <Link to="/register"><Button size="sm" className="rounded-full px-4 font-medium text-xs text-white" style={{ background: 'var(--eleven-accent)' }}>Register</Button></Link>
             </div>}
+          
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild className="md:hidden"><Button variant="ghost" size="icon" className="h-8 w-8"><Menu size={20} /></Button></SheetTrigger>
             <SheetContent side="right" className="w-72 p-0">
@@ -86,9 +141,19 @@ export default function Navbar() {
                     </div>
                   )}
                 </div>
-                <nav className="flex-1 p-4 flex flex-col gap-1">
+                <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
                   {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}
-                  {isAuthenticated && <><Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><User size={18} />My Dashboard</Link>{isAdmin && <Link to="/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Shield size={18} />Admin Panel</Link>}</>}
+                  
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 pt-4 pb-1">Resources</div>
+                  {resourceLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={16} />{link.label}</Link> })}
+
+                  {isAuthenticated && (
+                    <>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 pt-4 pb-1">Account</div>
+                      <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><User size={16} />My Dashboard</Link>
+                      {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Shield size={16} />Admin Panel</Link>}
+                    </>
+                  )}
                 </nav>
                 {isAuthenticated && <div className="p-4 border-t" style={{ borderColor: 'var(--eleven-border)' }}><button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><LogOut size={18} />Sign Out</button></div>}
               </div>
