@@ -63,12 +63,14 @@ export const prayerApi = {
 export const circleApi = {
   list: () => fetchApi('/circles/'),
   join: (id: number) => fetchApi(`/circles/${id}/join/`, { method: 'POST' }),
+  create: (data: Record<string, unknown>) => fetchApi('/circles/', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // Schedules
 export const scheduleApi = {
   upcoming: () => fetchApi('/schedules/upcoming/'),
   live: () => fetchApi('/schedules/live/'),
+  create: (data: Record<string, unknown>) => fetchApi('/schedules/', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // Forum

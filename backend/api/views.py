@@ -255,6 +255,9 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
     queryset = ScheduledPrayer.objects.all()
     serializer_class = ScheduledPrayerSerializer
 
+    def perform_create(self, serializer):
+        serializer.save(host=self.request.user)
+
     @action(detail=False, methods=['get'])
     def upcoming(self, request):
         two_hours_ago = timezone.now() - timezone.timedelta(hours=2)
