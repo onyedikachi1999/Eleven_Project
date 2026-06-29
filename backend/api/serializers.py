@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     User, Testimony, TestimonyReaction, Prayer, PrayerResponse, Comment,
-    PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply
+    PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply,
+    CircleMessage
 )
 
 
@@ -153,4 +154,42 @@ class ForumReplySerializer(serializers.ModelSerializer):
     def get_author_name(self, obj):
         if obj.user:
             return obj.user.get_full_name() or obj.user.username or 'User'
+        return None
+
+
+class CircleMessageSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+    author_avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CircleMessage
+        fields = ['id', 'content', 'created_at', 'user_id', 'author_name', 'author_avatar']
+
+    def get_author_name(self, obj):
+        if obj.user:
+            return obj.user.get_full_name() or obj.user.username or 'User'
+        return None
+
+    def get_author_avatar(self, obj):
+        if obj.user:
+            return obj.user.avatar
+        return None
+
+
+class CircleMemberSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    user_avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CircleMember
+        fields = ['id', 'role', 'joined_at', 'user_id', 'user_name', 'user_avatar']
+
+    def get_user_name(self, obj):
+        if obj.user:
+            return obj.user.get_full_name() or obj.user.username or 'User'
+        return None
+
+    def get_user_avatar(self, obj):
+        if obj.user:
+            return obj.user.avatar
         return None

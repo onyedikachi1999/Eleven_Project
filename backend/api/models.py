@@ -234,3 +234,14 @@ class ForumReply(models.Model):
     class Meta:
         db_table = 'forum_replies'
         ordering = ['created_at']
+
+
+class CircleMessage(models.Model):
+    circle = models.ForeignKey(PrayerCircle, on_delete=models.CASCADE, related_name='messages')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'circle_messages'
+        ordering = ['created_at']

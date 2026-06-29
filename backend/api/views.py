@@ -211,7 +211,9 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
     serializer_class = PrayerCircleSerializer
 
     def get_queryset(self):
-        return PrayerCircle.objects.filter(is_public=True).order_by('-member_count')
+        if self.action == 'list':
+            return PrayerCircle.objects.filter(is_public=True).order_by('-member_count')
+        return PrayerCircle.objects.all()
 
     def create(self, request):
         if not request.user.is_authenticated:
@@ -249,6 +251,49 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
             return Response(False)
         exists = CircleMember.objects.filter(circle_id=pk, user=request.user).exists()
         return Response(exists)
+
+    @action(detail=True, methods=['get', 'post'])
+    def messages(self, request, pk=None):
+        circle = self.get_object()
+        is_member = request.user.is_authenticated and CircleMember.objects.filter(circle=circle, user=request.user).exists()
+
+        if request.method == 'POST':
+            if not request.user.is_authenticated:
+                return Response({'detail': 'Authentication required'}, status=401)
+            if not is_member:
+                return Response({'detail': 'You must be a member of this circle to post messages'}, status=403)
+            
+            content = request.data.get('content', '').strip()
+            if not content:
+                return Response({'detail': 'Message content cannot be empty'}, status=400)
+            
+            from .models import CircleMessage
+            from .serializers import CircleMessageSerializer
+            msg = CircleMessage.objects.create(circle=circle, user=request.user, content=content)
+            return Response(CircleMessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+            
+        else:
+            if not circle.is_public and not is_member:
+                return Response({'detail': 'You do not have permission to view messages in this private circle'}, status=403)
+                
+            from .models import CircleMessage
+            from .serializers import CircleMessageSerializer
+            messages = CircleMessage.objects.filter(circle=circle).order_by('created_at')
+            serializer = CircleMessageSerializer(messages[:100], many=True)
+            return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def members(self, request, pk=None):
+        circle = self.get_object()
+        if not circle.is_public:
+            is_member = request.user.is_authenticated and CircleMember.objects.filter(circle=circle, user=request.user).exists()
+            if not is_member:
+                return Response({'detail': 'You do not have permission to view members in this private circle'}, status=403)
+                
+        members = CircleMember.objects.filter(circle=circle).order_by('-role', 'joined_at')
+        from .serializers import CircleMemberSerializer
+        serializer = CircleMemberSerializer(members, many=True)
+        return Response(serializer.data)
 
 
 class ScheduledPrayerViewSet(viewsets.ModelViewSet):

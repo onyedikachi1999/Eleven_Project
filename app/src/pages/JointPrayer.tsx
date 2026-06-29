@@ -334,15 +334,21 @@ export default function JointPrayer() {
               const CatIcon = categoryIcons[circle.category] ?? Church
               const catColor = categoryColors[circle.category] ?? categoryColors.general
               return (
-                <div key={circle.id} className="bg-white rounded-xl p-5 transition-all hover:shadow-md" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: catColor.light }}><CatIcon size={18} style={{ color: catColor.text }} /></div>
-                  <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{circle.name}</h3>
-                  <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{circle.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs flex items-center gap-1" style={{ color: 'var(--eleven-text-muted)' }}><Users size={12} /> {circle.member_count} members</span>
-                    <span className="flex items-center gap-1 text-[10px]" style={{ color: circle.is_public ? 'var(--eleven-success)' : 'var(--eleven-text-muted)' }}>{circle.is_public ? <Globe size={10} /> : <Lock size={10} />}{circle.is_public ? 'Public' : 'Private'}</span>
+                <div key={circle.id} className="bg-white rounded-xl p-5 transition-all hover:shadow-md border flex flex-col justify-between" style={{ borderColor: 'var(--eleven-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3" style={{ background: catColor.light }}><CatIcon size={18} style={{ color: catColor.text }} /></div>
+                    <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{circle.name}</h3>
+                    <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{circle.description}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs flex items-center gap-1" style={{ color: 'var(--eleven-text-muted)' }}><Users size={12} /> {circle.member_count} members</span>
+                      <span className="flex items-center gap-1 text-[10px]" style={{ color: circle.is_public ? 'var(--eleven-success)' : 'var(--eleven-text-muted)' }}>{circle.is_public ? <Globe size={10} /> : <Lock size={10} />}{circle.is_public ? 'Public' : 'Private'}</span>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full mt-3 rounded-lg text-xs h-8" style={{ borderColor: 'var(--eleven-prayer)', color: 'var(--eleven-prayer)' }} onClick={() => handleJoin(circle.id)}>Join Circle</Button>
+                  <Link to={`/prayer-circle/${circle.id}`} className="w-full">
+                    <Button variant="outline" size="sm" className="w-full rounded-lg text-xs h-8 transition-all hover:bg-stone-50" style={{ borderColor: 'var(--eleven-prayer)', color: 'var(--eleven-prayer)' }}>
+                      View Group
+                    </Button>
+                  </Link>
                 </div>
               )
             })}

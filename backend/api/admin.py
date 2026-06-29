@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (
     User, Testimony, Prayer, PrayerResponse, Comment,
-    PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply
+    PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply,
+    CircleMessage
 )
 
 
@@ -51,3 +52,4 @@ admin.site.register(PrayerResponse)
 admin.site.register(Comment)
 admin.site.register(CircleMember)
 admin.site.register(ForumReply)
+admin.site.register(CircleMessage)

@@ -62,8 +62,14 @@ export const prayerApi = {
 // Circles
 export const circleApi = {
   list: () => fetchApi('/circles/'),
+  get: (id: number) => fetchApi(`/circles/${id}/`),
   join: (id: number) => fetchApi(`/circles/${id}/join/`, { method: 'POST' }),
+  leave: (id: number) => fetchApi(`/circles/${id}/leave/`, { method: 'POST' }),
+  checkMembership: (id: number) => fetchApi(`/circles/${id}/check_membership/`),
   create: (data: Record<string, unknown>) => fetchApi('/circles/', { method: 'POST', body: JSON.stringify(data) }),
+  getMessages: (id: number) => fetchApi(`/circles/${id}/messages/`),
+  postMessage: (id: number, content: string) => fetchApi(`/circles/${id}/messages/`, { method: 'POST', body: JSON.stringify({ content }) }),
+  getMembers: (id: number) => fetchApi(`/circles/${id}/members/`),
 };
 
 // Schedules

@@ -8,6 +8,7 @@ import TestimonyHub from './pages/TestimonyHub'
 import PrayerRoom from './pages/PrayerRoom'
 import ElevenTV from './pages/ElevenTV'
 import JointPrayer from './pages/JointPrayer'
+import PrayerCircleDetail from './pages/PrayerCircleDetail'
 import CommunityForum from './pages/CommunityForum'
 import Dashboard from './pages/Dashboard'
 import AdminPanel from './pages/AdminPanel'
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/prayer-room" element={<PrayerRoom />} />
           <Route path="/tv" element={<ElevenTV />} />
           <Route path="/joint-prayer" element={<JointPrayer />} />
+          <Route path="/prayer-circle/:id" element={<PrayerCircleDetail />} />
           <Route path="/community" element={<CommunityForum />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminPanel />} />
