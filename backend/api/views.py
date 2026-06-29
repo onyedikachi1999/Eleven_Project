@@ -184,6 +184,14 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer = CommentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         comment = serializer.save(user=request.user if request.user.is_authenticated else None)
+        if comment.target_type == 'testimony':
+            try:
+                from .models import Testimony
+                testimony = Testimony.objects.get(id=comment.target_id)
+                testimony.prayer_count = Comment.objects.filter(target_type='testimony', target_id=comment.target_id).count()
+                testimony.save()
+            except Exception:
+                pass
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 
 
