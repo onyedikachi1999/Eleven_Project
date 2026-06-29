@@ -221,19 +221,19 @@ export default function JointPrayer() {
   const [loading, setLoading] = useState(true)
 
   const loadSchedules = () => {
-    scheduleApi.upcoming().then(r => setSchedules(r || [])).catch(() => {})
+    scheduleApi.upcoming().then(r => setSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
     scheduleApi.live().then(r => setLiveSession(r)).catch(() => {})
   }
 
   const loadCircles = () => {
-    circleApi.list().then(r => { setCircles(r ? (r.results ?? r) : []) }).catch(() => {})
+    circleApi.list().then(r => { setCircles(r ? (Array.isArray(r) ? r : (r.results ?? [])) : []) }).catch(() => {})
   }
 
   useEffect(() => {
     setLoading(true)
-    const p1 = scheduleApi.upcoming().then(r => setSchedules(r || [])).catch(() => {})
+    const p1 = scheduleApi.upcoming().then(r => setSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
     const p2 = scheduleApi.live().then(r => setLiveSession(r)).catch(() => {})
-    const p3 = circleApi.list().then(r => setCircles(r ? (r.results ?? r) : [])).catch(() => {})
+    const p3 = circleApi.list().then(r => setCircles(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
     
     Promise.all([p1, p2, p3]).finally(() => setLoading(false))
   }, [])
@@ -305,7 +305,7 @@ export default function JointPrayer() {
             <CreateSessionModal onSuccess={loadSchedules} />
           </div>
           {loading ? <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div> :
-            schedules.length > 0 ? (
+            (Array.isArray(schedules) && schedules.length > 0) ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {schedules.map(s => (
                   <div key={s.id} className="bg-white rounded-xl p-5 transition-all hover:shadow-md" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
@@ -330,7 +330,7 @@ export default function JointPrayer() {
             <CreateCircleModal onSuccess={loadCircles} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {circles.map(circle => {
+            {Array.isArray(circles) && circles.map(circle => {
               const CatIcon = categoryIcons[circle.category] ?? Church
               const catColor = categoryColors[circle.category] ?? categoryColors.general
               return (
