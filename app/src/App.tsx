@@ -11,6 +11,9 @@ import CommunityForum from './pages/CommunityForum'
 import Dashboard from './pages/Dashboard'
 import AdminPanel from './pages/AdminPanel'
 import About from './pages/About'
+import Guidelines from './pages/Guidelines'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 
@@ -30,6 +33,9 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/about" element={<About />} />
+          <Route path="/guidelines" element={<Guidelines />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

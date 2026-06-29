@@ -11,9 +11,9 @@ const platformLinks = [
 
 const resourceLinks = [
   { to: '/about', label: 'About' },
-  { to: '#', label: 'Guidelines' },
-  { to: '#', label: 'Privacy' },
-  { to: '#', label: 'Terms' },
+  { to: '/guidelines', label: 'Guidelines' },
+  { to: '/privacy', label: 'Privacy' },
+  { to: '/terms', label: 'Terms' },
 ]
 
 export default function Footer() {
