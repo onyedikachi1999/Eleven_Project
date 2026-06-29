@@ -80,7 +80,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'is_anonymous', 'created_at', 'user_id', 'author_name']
+        fields = ['id', 'target_type', 'target_id', 'content', 'is_anonymous', 'created_at', 'user_id', 'author_name']
 
     def get_author_name(self, obj):
         if obj.is_anonymous or obj.user is None:

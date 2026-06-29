@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { testimonyApi } from '@/lib/api'
+import { testimonyApi, commentApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -41,12 +41,19 @@ function timeAgo(date: string) {
   return d.toLocaleDateString()
 }
 
-function TestimonyCard({ t }: { t: any }) {
+function TestimonyCard({ t, onSelect, onAmen }: { t: any; onSelect: () => void; onAmen: () => void }) {
   const CatIcon = categoryIcons[t.category] ?? Heart
   const catColor = categoryColors[t.category] ?? categoryColors.general
-  const handleAmen = () => { testimonyApi.amen(t.id).catch(() => {}) }
+  const handleAmenClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    testimonyApi.amen(t.id).then(onAmen).catch(() => {})
+  }
+  const handleActionClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
   return (
-    <div className="group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderLeft: `3px solid ${catColor.bg}` }}>
+    <div onClick={onSelect} className="group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderLeft: `3px solid ${catColor.bg}` }}>
       {t.thumbnail_url && (
         <div className="relative aspect-video overflow-hidden">
           <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -63,12 +70,113 @@ function TestimonyCard({ t }: { t: any }) {
         <h3 className="font-display text-base font-semibold mb-1.5 line-clamp-2" style={{ color: 'var(--eleven-text)' }}>{t.title}</h3>
         <p className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
         <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: 'var(--eleven-border)' }}>
-          <button onClick={handleAmen} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {t.amen_count}</button>
+          <button onClick={handleAmenClick} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {t.amen_count}</button>
           <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count}</span>
-          <span className="ml-auto flex items-center gap-3"><Bookmark size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /><Share2 size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /></span>
+          <span className="ml-auto flex items-center gap-3" onClick={handleActionClick}><Bookmark size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /><Share2 size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /></span>
         </div>
       </div>
     </div>
+  )
+}
+
+function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: { t: any; open: boolean; onOpenChange: (open: boolean) => void; onUpdate: () => void }) {
+  const { isAuthenticated } = useAuth()
+  const [comments, setComments] = useState<any[]>([])
+  const [commentText, setCommentText] = useState('')
+  const [isAnonymous, setIsAnonymous] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadComments = () => {
+    commentApi.list('testimony', t.id).then(setComments).catch(() => {})
+  }
+
+  useEffect(() => {
+    if (open) {
+      loadComments()
+      testimonyApi.incrementView(t.id).then(onUpdate).catch(() => {})
+    }
+  }, [open, t.id])
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!isAuthenticated) { toast.error('Please sign in first'); return }
+    if (!commentText.trim()) return
+    setSubmitting(true)
+    try {
+      await commentApi.create({ target_type: 'testimony', target_id: t.id, content: commentText.trim(), is_anonymous: isAnonymous })
+      setCommentText(''); setIsAnonymous(false); toast.success('Comment posted!'); loadComments(); onUpdate()
+    } catch (err: any) { toast.error(err.message || 'Failed to post comment') }
+    setSubmitting(false)
+  }
+
+  const CatIcon = categoryIcons[t.category] ?? Heart
+  const catColor = categoryColors[t.category] ?? categoryColors.general
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+        <DialogHeader>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: catColor.bg, color: catColor.text }}><CatIcon size={10} /> {t.category}</span>
+            <span className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>{timeAgo(t.created_at)}</span>
+          </div>
+          <DialogTitle className="font-display text-2xl font-bold leading-tight" style={{ color: 'var(--eleven-text)' }}>{t.title}</DialogTitle>
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t" style={{ borderColor: 'var(--eleven-border)' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: t.is_anonymous ? '#E8E4DE' : catColor.bg, color: t.is_anonymous ? '#6B6560' : catColor.text }}>{t.is_anonymous ? 'A' : (t.author_name ?? 'U').charAt(0).toUpperCase()}</div>
+            <div>
+              <p className="text-xs font-medium" style={{ color: 'var(--eleven-text)' }}>{t.is_anonymous ? 'Anonymous' : (t.author_name ?? 'User')}</p>
+              <p className="text-[10px]" style={{ color: 'var(--eleven-text-muted)' }}>Author</p>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="my-6">
+          {t.thumbnail_url && (
+            <div className="relative aspect-video rounded-xl overflow-hidden mb-4">
+              <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover" />
+            </div>
+          )}
+          <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
+        </div>
+
+        <div className="flex items-center gap-4 py-3 border-t border-b" style={{ borderColor: 'var(--eleven-border)' }}>
+          <button onClick={() => testimonyApi.amen(t.id).then(onUpdate).catch(() => {})} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-red-500" style={{ color: 'var(--eleven-text-muted)' }}><Heart size={14} /> {t.amen_count} Amens</button>
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count} Comments</span>
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--eleven-text-muted)' }}>Viewed {t.view_count} times</span>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <h3 className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>Comments</h3>
+          {isAuthenticated ? (
+            <form onSubmit={handlePostComment} className="space-y-3">
+              <Textarea value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Write an encouraging word..." required rows={2} className="text-xs resize-none" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="anon-comment" checked={isAnonymous} onCheckedChange={v => setIsAnonymous(v as boolean)} />
+                  <Label htmlFor="anon-comment" className="text-xs font-normal cursor-pointer">Comment anonymously</Label>
+                </div>
+                <Button type="submit" size="sm" className="rounded-lg text-xs" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>{submitting ? 'Posting...' : 'Post Comment'}</Button>
+              </div>
+            </form>
+          ) : (
+            <div className="p-3 bg-stone-50/50 rounded-lg text-center"><p className="text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>Please <Link to="/login" className="font-semibold underline" style={{ color: 'var(--eleven-accent)' }}>Sign In</Link> to post an encouraging comment.</p></div>
+          )}
+          <div className="space-y-3 pt-2">
+            {comments.length > 0 ? (
+              comments.map(c => (
+                <div key={c.id} className="p-3 rounded-lg bg-stone-50/50 border" style={{ borderColor: 'var(--eleven-border)' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold" style={{ color: 'var(--eleven-text)' }}>{c.is_anonymous ? 'Anonymous' : (c.author_name ?? 'User')}</span>
+                    <span className="text-[10px]" style={{ color: 'var(--eleven-text-muted)' }}>&middot; {timeAgo(c.created_at)}</span>
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>{c.content}</p>
+                </div>
+              ))
+            ) : <p className="text-xs text-center py-4" style={{ color: 'var(--eleven-text-muted)' }}>No comments yet. Leave a word of encouragement!</p>}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -122,12 +230,35 @@ export default function TestimonyHub() {
   const [search, setSearch] = useState('')
   const [testimonies, setTestimonies] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedTestimony, setSelectedTestimony] = useState<any>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   const load = () => {
     setIsLoading(true)
     const params: Record<string, string> = { sort: activeSort, limit: '20' }
     if (activeCategory !== 'all') params.category = activeCategory
-    testimonyApi.list(params).then(r => { setTestimonies(r.results ?? r); setIsLoading(false) }).catch(() => setIsLoading(false))
+    testimonyApi.list(params).then(r => {
+      const results = r.results ?? r
+      setTestimonies(results)
+      setIsLoading(false)
+      if (selectedTestimony) {
+        const updated = results.find((item: any) => item.id === selectedTestimony.id)
+        if (updated) setSelectedTestimony(updated)
+      }
+    }).catch(() => setIsLoading(false))
+  }
+
+  const loadWithoutSpinner = () => {
+    const params: Record<string, string> = { sort: activeSort, limit: '20' }
+    if (activeCategory !== 'all') params.category = activeCategory
+    testimonyApi.list(params).then(r => {
+      const results = r.results ?? r
+      setTestimonies(results)
+      if (selectedTestimony) {
+        const updated = results.find((item: any) => item.id === selectedTestimony.id)
+        if (updated) setSelectedTestimony(updated)
+      }
+    }).catch(() => {})
   }
 
   useEffect(() => { load() }, [activeCategory, activeSort])
@@ -156,9 +287,18 @@ export default function TestimonyHub() {
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {isLoading ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} className="h-72 rounded-xl" />)}</div> :
-          filtered.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{filtered.map(t => <TestimonyCard key={t.id} t={t} />)}</div> :
+          filtered.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{filtered.map(t => <TestimonyCard key={t.id} t={t} onSelect={() => { setSelectedTestimony(t); setDetailOpen(true) }} onAmen={loadWithoutSpinner} />)}</div> :
           <div className="text-center py-20"><p className="text-lg font-medium mb-2" style={{ color: 'var(--eleven-text)' }}>No testimonies found</p><p className="text-sm" style={{ color: 'var(--eleven-text-secondary)' }}>{search ? 'Try a different search term' : 'Be the first to share your story!'}</p></div>}
       </div>
+
+      {selectedTestimony && (
+        <TestimonyDetailModal
+          t={selectedTestimony}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          onUpdate={loadWithoutSpinner}
+        />
+      )}
     </div>
   )
 }
