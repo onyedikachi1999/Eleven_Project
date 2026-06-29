@@ -10,6 +10,7 @@ import JointPrayer from './pages/JointPrayer'
 import CommunityForum from './pages/CommunityForum'
 import Dashboard from './pages/Dashboard'
 import AdminPanel from './pages/AdminPanel'
+import About from './pages/About'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/community" element={<CommunityForum />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/about" element={<About />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

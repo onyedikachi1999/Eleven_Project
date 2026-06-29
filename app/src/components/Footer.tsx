@@ -10,7 +10,7 @@ const platformLinks = [
 ]
 
 const resourceLinks = [
-  { to: '#', label: 'About' },
+  { to: '/about', label: 'About' },
   { to: '#', label: 'Guidelines' },
   { to: '#', label: 'Privacy' },
   { to: '#', label: 'Terms' },
