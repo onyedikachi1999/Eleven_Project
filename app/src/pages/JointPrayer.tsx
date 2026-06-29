@@ -221,21 +221,21 @@ export default function JointPrayer() {
   const [loading, setLoading] = useState(true)
 
   const loadSchedules = () => {
-    scheduleApi.upcoming().then(r => setSchedules(r)).catch(() => {})
+    scheduleApi.upcoming().then(r => setSchedules(r || [])).catch(() => {})
     scheduleApi.live().then(r => setLiveSession(r)).catch(() => {})
   }
 
   const loadCircles = () => {
-    circleApi.list().then(r => { setCircles(r.results ?? r) }).catch(() => {})
+    circleApi.list().then(r => { setCircles(r ? (r.results ?? r) : []) }).catch(() => {})
   }
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([
-      scheduleApi.upcoming().then(r => setSchedules(r)),
-      scheduleApi.live().then(r => setLiveSession(r)),
-      circleApi.list().then(r => setCircles(r.results ?? r))
-    ]).finally(() => setLoading(false))
+    const p1 = scheduleApi.upcoming().then(r => setSchedules(r || [])).catch(() => {})
+    const p2 = scheduleApi.live().then(r => setLiveSession(r)).catch(() => {})
+    const p3 = circleApi.list().then(r => setCircles(r ? (r.results ?? r) : [])).catch(() => {})
+    
+    Promise.all([p1, p2, p3]).finally(() => setLoading(false))
   }, [])
 
   const handleJoinSession = (title: string) => {
