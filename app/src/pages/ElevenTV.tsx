@@ -3,7 +3,7 @@ import { testimonyApi, scheduleApi } from '@/lib/api'
 import { Play, Radio, Users, Clock, Eye } from 'lucide-react'
 import { TestimonyDetailModal } from '@/components/TestimonyCardShared'
 
-const channelTabs = ['all', 'testimonies', 'live', 'interviews', 'prayer', 'inspirational']
+const channelTabs = ['all', 'live', 'healing', 'finance', 'family', 'career', 'deliverance', 'general']
 
 function timeAgo(date: string) {
   const d = new Date(date), now = new Date()
