@@ -21,9 +21,12 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import PageTransition from './components/PageTransition'
 
+import { ThemeProvider } from './hooks/useTheme'
+
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--eleven-bg)' }}>
+    <ThemeProvider>
+      <div className="min-h-screen flex flex-col transition-colors duration-300" style={{ background: 'var(--eleven-bg)' }}>
       <Navbar />
       <main className="flex-1">
         <PageTransition>
@@ -51,5 +54,6 @@ export default function App() {
       <Footer />
       <Toaster position="bottom-right" />
     </div>
+    </ThemeProvider>
   )
 }

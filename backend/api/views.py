@@ -430,6 +430,28 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'detail': 'Not authenticated'}, status=401)
         return Response(UserSerializer(request.user).data)
 
+    @action(detail=False, methods=['patch', 'put'], url_path='update')
+    def update_profile(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Not authenticated'}, status=401)
+        user = request.user
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        bio = request.data.get('bio')
+        avatar = request.data.get('avatar')
+
+        if first_name is not None:
+            user.first_name = first_name
+        if last_name is not None:
+            user.last_name = last_name
+        if bio is not None:
+            user.bio = bio
+        if avatar is not None:
+            user.avatar = avatar
+
+        user.save()
+        return Response(UserSerializer(user).data)
+
     @action(detail=False, methods=['post'], url_path='upgrade')
     def upgrade_subscription(self, request):
         if not request.user.is_authenticated:
@@ -510,6 +532,29 @@ def api_upload(request):
     # Generate unique filename to avoid conflict
     filename = f"{uuid.uuid4()}{ext}"
     path = default_storage.save(os.path.join('slides', filename), ContentFile(uploaded_file.read()))
+
+    # Generate full URL
+    url = request.build_absolute_uri(settings.MEDIA_URL + path)
+    return Response({'url': url})
+
+
+@api_view(['POST'])
+def api_user_upload(request):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Not authenticated'}, status=401)
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return Response({'detail': 'No file uploaded'}, status=400)
+
+    # Check extension
+    ext = os.path.splitext(uploaded_file.name)[1].lower()
+    if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
+        return Response({'detail': 'Unsupported image type. Only JPG, PNG, GIF are allowed.'}, status=400)
+
+    # Generate unique filename to avoid conflict
+    filename = f"{uuid.uuid4()}{ext}"
+    path = default_storage.save(os.path.join('avatars', filename), ContentFile(uploaded_file.read()))
 
     # Generate full URL
     url = request.build_absolute_uri(settings.MEDIA_URL + path)

@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { testimonyApi, prayerApi } from '@/lib/api'
+import { testimonyApi, prayerApi, authApi } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { BookOpen, HandHeart, Heart, MessageCircle, Clock, BookMarked, Users } from 'lucide-react'
+import { BookOpen, HandHeart, Heart, MessageCircle, Clock, BookMarked, Users, Camera, Edit } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
 
 
 const categoryColors: Record<string, { bg: string; text: string }> = {
@@ -33,12 +38,65 @@ function StatCard({ icon: Icon, label, value }: { icon: typeof BookOpen; label: 
 }
 
 export default function Dashboard() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, refresh } = useAuth()
   const [testimonies, setTestimonies] = useState<any[]>([])
   const [prayers, setPrayers] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [tLoading, setTLoading] = useState(true)
   const [pLoading, setPLoading] = useState(true)
+
+  // Profile Edit states
+  const [editOpen, setEditOpen] = useState(false)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [profileBio, setProfileBio] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.first_name || '')
+      setLastName(user.last_name || '')
+      setProfileBio(user.bio || '')
+      setAvatarUrl(user.avatar || '')
+    }
+  }, [user, editOpen])
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    try {
+      const res = await authApi.uploadAvatar(file)
+      setAvatarUrl(res.url)
+      toast.success('Avatar uploaded successfully!')
+    } catch (err: any) {
+      toast.error(err.message || 'Avatar upload failed')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingProfile(true)
+    try {
+      await authApi.updateProfile({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        bio: profileBio.trim(),
+        avatar: avatarUrl.trim()
+      })
+      toast.success('Profile updated successfully!')
+      setEditOpen(false)
+      refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update profile')
+    } finally {
+      setSavingProfile(false)
+    }
+  }
 
   useEffect(() => {
     testimonyApi.list({ limit: '50' }).then(r => { setTestimonies(r.results ?? r); setTLoading(false) }).catch(() => setTLoading(false))
@@ -68,9 +126,16 @@ export default function Dashboard() {
               <p className="text-sm mb-2" style={{ color: 'var(--eleven-text-secondary)' }}>{user.email ?? ''}</p>
               {user.bio && <p className="text-sm max-w-xl" style={{ color: 'var(--eleven-text-secondary)' }}>{user.bio}</p>}
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                onClick={() => setEditOpen(true)}
+                variant="outline"
+                className="rounded-full px-5 text-xs h-9 font-semibold border-stone-300 hover:bg-stone-50 cursor-pointer"
+              >
+                <Edit size={13} className="mr-1.5" /> Edit Profile
+              </Button>
               <Link to="/pricing">
-                <Button className="rounded-full px-5 text-xs h-9 text-white font-semibold" style={{ background: 'var(--eleven-accent)' }}>
+                <Button className="rounded-full px-5 text-xs h-9 text-white font-semibold cursor-pointer" style={{ background: 'var(--eleven-accent)' }}>
                   Manage Subscription
                 </Button>
               </Link>
@@ -118,6 +183,115 @@ export default function Dashboard() {
           <div className="text-center py-16"><BookMarked size={32} className="mx-auto mb-3" style={{ color: 'var(--eleven-text-muted)' }} /><p className="text-lg font-medium" style={{ color: 'var(--eleven-text)' }}>No saved items</p><p className="text-sm" style={{ color: 'var(--eleven-text-secondary)' }}>Bookmark testimonies and prayers to find them here.</p></div>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl font-bold">Edit Profile</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveProfile} className="space-y-6 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Avatar Selector Column */}
+              <div className="flex flex-col items-center gap-4">
+                <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Avatar Image</Label>
+                <div className="relative group w-28 h-28 rounded-full overflow-hidden border-2 border-stone-200">
+                  <Avatar className="w-full h-full">
+                    <AvatarImage src={avatarUrl ?? undefined} />
+                    <AvatarFallback className="text-3xl font-display font-bold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
+                      {firstName ? firstName.charAt(0).toUpperCase() : 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Camera size={20} />
+                    <span className="text-[10px] font-semibold mt-1">Upload File</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleAvatarFileChange} 
+                      disabled={uploadingAvatar}
+                    />
+                  </label>
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-[#c4956a] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* External URL alternative */}
+                <div className="w-full space-y-1">
+                  <Label htmlFor="avatar-url" className="text-[10px] text-stone-500 font-semibold uppercase">Or Image URL</Label>
+                  <Input 
+                    id="avatar-url"
+                    placeholder="https://example.com/avatar.jpg"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    className="rounded-xl text-xs h-8"
+                  />
+                </div>
+              </div>
+              
+              {/* Fields Column */}
+              <div className="md:col-span-2 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="first-name" className="text-xs font-semibold text-stone-700">First Name</Label>
+                    <Input
+                      id="first-name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Enter first name"
+                      className="rounded-xl text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="last-name" className="text-xs font-semibold text-stone-700">Last Name</Label>
+                    <Input
+                      id="last-name"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Enter last name"
+                      className="rounded-xl text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="bio" className="text-xs font-semibold text-stone-700">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    value={profileBio}
+                    onChange={(e) => setProfileBio(e.target.value)}
+                    placeholder="Share a brief testimony or bio about yourself..."
+                    className="rounded-xl text-sm min-h-[100px] leading-relaxed"
+                  />
+                </div>
+              </div>
+
+            </div>
+            
+            <div className="flex justify-end gap-3 pt-4 border-t border-stone-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+                className="rounded-full font-semibold text-xs h-9 cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingProfile || uploadingAvatar}
+                className="rounded-full font-semibold text-xs h-9 text-white bg-gradient-to-r from-[#c4956a] to-[#d4b28c] hover:brightness-105 transition-all shadow-md cursor-pointer"
+              >
+                {savingProfile ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -7,8 +7,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ElevenLogo from '@/components/ElevenLogo'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Bell,
-  User, LogOut, Shield, HandHeart, CreditCard
+  User, LogOut, Shield, HandHeart, CreditCard, Sun, Moon
 } from 'lucide-react'
+import { useTheme } from '@/hooks/useTheme'
 
 const navLinks = [
   { to: '/', label: 'Home', icon: Home },
@@ -23,6 +24,7 @@ const navLinks = [
 export default function Navbar() {
   const location = useLocation()
   const { user, isAuthenticated, isLoading, isAdmin, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -74,6 +76,15 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <button 
+            onClick={toggleTheme}
+            className="p-2 rounded-lg transition-colors hover:bg-black/5 hover:dark:bg-white/5 flex relative cursor-pointer" 
+            style={{ color: 'var(--eleven-text-secondary)' }}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
+          </button>
+
           {isAuthenticated && (
             <button 
               className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex relative" 

@@ -28,6 +28,21 @@ export const authApi = {
   register: (data: Record<string, unknown>) => fetchApi('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => fetchApi('/auth/logout/', { method: 'POST' }),
   upgrade: (plan: 'free' | 'regular' | 'premium') => fetchApi('/users/upgrade/', { method: 'POST', body: JSON.stringify({ plan }) }),
+  updateProfile: (data: Record<string, unknown>) => fetchApi('/users/update/', { method: 'PATCH', body: JSON.stringify(data) }),
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('http://localhost:8000/api/users/upload/', {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
 };
 
 // Testimonies

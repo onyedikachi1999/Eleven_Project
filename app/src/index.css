@@ -53,24 +53,24 @@
   }
 
   .dark {
-    --background: 0 0% 10%;
+    --background: 0 0% 8%;
     --foreground: 0 0% 98%;
     --card: 0 0% 12%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 12%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
     --primary: 28 40% 59%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 15%;
+    --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 0 0% 65%;
     --accent: 100 12% 50%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 50% 40%;
+    --destructive: 0 50% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
     --ring: 28 40% 59%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -80,6 +80,24 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Overrides for custom ELEVEN tokens in dark mode */
+    --eleven-bg: #121212;
+    --eleven-surface: #1A1A1A;
+    --eleven-surface-elevated: #242424;
+    --eleven-border: #2C2C2C;
+    --eleven-border-strong: #3D3D3D;
+    --eleven-text: #F5F5F5;
+    --eleven-text-secondary: #A8A29E;
+    --eleven-text-muted: #6B6661;
+    --eleven-accent: #D4B28C;
+    --eleven-accent-light: #2D261E;
+    --eleven-accent-dark: #F5E3CD;
+    --eleven-prayer: #8FAF9F;
+    --eleven-prayer-light: #1D261B;
+    --eleven-live: #D97070;
+    --eleven-success: #6EAF82;
+    --eleven-dark: #0A0A0A;
   }
 }
 
