@@ -37,16 +37,45 @@ export function timeAgo(date: string) {
 interface TestimonyCardProps {
   t: any
   onSelect: () => void
-  onAmen: (id: number) => void
+  onAmen?: (id: number) => void
 }
 
 export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
+  const { isAuthenticated } = useAuth()
   const CatIcon = categoryIcons[t.category] ?? Heart
   const catColor = categoryColors[t.category] ?? categoryColors.general
 
-  const handleAmenClick = (e: React.MouseEvent) => {
+  const [localAmenCount, setLocalAmenCount] = useState(t.amen_count)
+  const [localHasReacted, setLocalHasReacted] = useState(t.has_reacted)
+
+  useEffect(() => {
+    setLocalAmenCount(t.amen_count)
+    setLocalHasReacted(t.has_reacted)
+  }, [t.id, t.amen_count, t.has_reacted])
+
+  const handleAmenClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    onAmen(t.id)
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to react')
+      return
+    }
+
+    const nextReacted = !localHasReacted
+    setLocalHasReacted(nextReacted)
+    setLocalAmenCount((prev: number) => nextReacted ? prev + 1 : Math.max(0, prev - 1))
+
+    try {
+      const res = await testimonyApi.amen(t.id)
+      if (res) {
+        setLocalHasReacted(res.reacted)
+        setLocalAmenCount(res.amen_count)
+      }
+      if (onAmen) onAmen(t.id)
+    } catch (err) {
+      setLocalHasReacted(localHasReacted)
+      setLocalAmenCount(localAmenCount)
+      toast.error('Failed to update reaction')
+    }
   }
 
   const handleCommentClick = (e: React.MouseEvent) => {
@@ -76,7 +105,7 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
         <h3 className="font-display text-base font-semibold mb-1.5 line-clamp-2" style={{ color: 'var(--eleven-text)' }}>{t.title}</h3>
         <p className="text-sm line-clamp-3 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
         <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: 'var(--eleven-border)' }}>
-          <button onClick={handleAmenClick} className={`flex items-center gap-1 text-xs font-medium transition-all duration-300 ${t.has_reacted ? 'text-red-500 scale-105 font-semibold' : 'text-stone-400 hover:text-red-500'}`}><Heart size={14} fill={t.has_reacted ? 'currentColor' : 'none'} className={`transition-transform duration-300 ${t.has_reacted ? 'scale-110 text-red-500' : ''}`} /> {t.amen_count} {t.has_reacted ? 'Reacted' : 'Reaction'}</button>
+          <button onClick={handleAmenClick} className={`flex items-center gap-1 text-xs font-medium transition-all duration-300 ${localHasReacted ? 'text-red-500 scale-105 font-semibold' : 'text-stone-400 hover:text-red-500'}`}><Heart size={14} fill={localHasReacted ? 'currentColor' : 'none'} className={`transition-transform duration-300 ${localHasReacted ? 'scale-110 text-red-500' : ''}`} /> {localAmenCount} {localHasReacted ? 'Reacted' : 'Reaction'}</button>
           <button onClick={handleCommentClick} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count}</button>
           <span className="ml-auto flex items-center gap-3" onClick={handleActionClick}><Bookmark size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /><Share2 size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /></span>
         </div>
