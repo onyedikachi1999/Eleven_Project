@@ -166,11 +166,30 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
         </DialogHeader>
 
         <div className="my-6">
-          {t.thumbnail_url && (
+          {t.type === 'video' && t.media_url ? (
+            <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-black">
+              <video
+                src={t.media_url}
+                poster={t.thumbnail_url || undefined}
+                controls
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ) : t.type === 'audio' && t.media_url ? (
+            <div className="mb-4">
+              {t.thumbnail_url && (
+                <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
+                  <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <audio src={t.media_url} controls className="w-full mt-2" />
+            </div>
+          ) : t.thumbnail_url ? (
             <div className="relative aspect-video rounded-xl overflow-hidden mb-4">
               <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover" />
             </div>
-          )}
+          ) : null}
           <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
         </div>
 
