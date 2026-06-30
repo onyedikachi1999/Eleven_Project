@@ -174,7 +174,7 @@ export default function TestimonyHub() {
 
   return (
     <div>
-      <div className="py-10 px-4 sm:px-6" style={{ background: '#F5F0EB' }}>
+      <div className="py-10 px-4 sm:px-6 animate-page-transition" style={{ background: 'var(--eleven-surface-elevated)' }}>
         <div className="max-w-7xl mx-auto">
           <h1 className="font-display text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--eleven-text)' }}>Testimony Hub</h1>
           <p className="text-sm sm:text-base" style={{ color: 'var(--eleven-text-secondary)' }}>Read, watch, and share stories of faith, breakthrough, and transformation.</p>

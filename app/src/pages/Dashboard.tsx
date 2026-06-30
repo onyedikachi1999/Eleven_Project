@@ -109,7 +109,7 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div className="rounded-2xl p-6 sm:p-8 mb-8" style={{ background: '#F5F0EB' }}>
+      <div className="rounded-2xl p-6 sm:p-8 mb-8" style={{ background: 'var(--eleven-surface-elevated)' }}>
         <div className="flex flex-col sm:flex-row items-start gap-4">
           <Avatar className="w-20 h-20">
             <AvatarImage src={user.avatar ?? undefined} />

@@ -5,7 +5,7 @@ export default function Privacy() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--eleven-bg)' }}>
       {/* Header */}
-      <div className="py-16 px-4 text-center" style={{ background: '#F5F0EB' }}>
+      <div className="py-16 px-4 text-center" style={{ background: 'var(--eleven-surface-elevated)' }}>
         <div className="max-w-3xl mx-auto">
           <span className="text-[10px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full bg-white/60 mb-3 inline-block" style={{ color: 'var(--eleven-accent-dark)' }}>
             Data Protection
