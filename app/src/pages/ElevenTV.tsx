@@ -22,8 +22,10 @@ export default function ElevenTV() {
   const [detailOpen, setDetailOpen] = useState(false)
 
   useEffect(() => {
-    const params: Record<string, string> = { limit: '20' }
-    if (activeTab !== 'testimonies' && activeTab !== 'all') params.type = 'text'
+    const params: Record<string, string> = { limit: '20', type: 'video' }
+    if (activeTab !== 'all' && activeTab !== 'testimonies' && activeTab !== 'live') {
+      params.category = activeTab
+    }
     testimonyApi.list(params)
       .then((r: any) => setVideos((r.results ?? r).filter((v: any) => v.thumbnail_url)))
       .catch(() => {})
@@ -94,8 +96,10 @@ export default function ElevenTV() {
           open={detailOpen}
           onOpenChange={setDetailOpen}
           onUpdate={() => {
-            const params: Record<string, string> = { limit: '20' }
-            if (activeTab !== 'testimonies' && activeTab !== 'all') params.type = 'text'
+            const params: Record<string, string> = { limit: '20', type: 'video' }
+            if (activeTab !== 'all' && activeTab !== 'testimonies' && activeTab !== 'live') {
+              params.category = activeTab
+            }
             testimonyApi.list(params)
               .then((r: any) => {
                 const results = r.results ?? r
