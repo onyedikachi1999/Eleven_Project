@@ -115,7 +115,7 @@ class ScheduledPrayerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ScheduledPrayer
-        fields = ['id', 'title', 'description', 'scheduled_at', 'duration', 'is_live',
+        fields = ['id', 'title', 'description', 'scheduled_at', 'duration', 'is_live', 'stream_url',
                   'participant_count', 'created_at', 'host_id', 'host_name']
 
     def get_host_name(self, obj):

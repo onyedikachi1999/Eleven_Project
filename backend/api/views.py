@@ -302,6 +302,10 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
     serializer_class = ScheduledPrayerSerializer
 
     def perform_create(self, serializer):
+        is_live = self.request.data.get('is_live', False)
+        if is_live and self.request.user.subscription_plan != 'premium':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only Premium Watchers can go live.")
         serializer.save(host=self.request.user)
 
     @action(detail=False, methods=['get'])

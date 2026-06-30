@@ -200,6 +200,7 @@ class ScheduledPrayer(models.Model):
     scheduled_at = models.DateTimeField()
     duration = models.IntegerField(default=60)
     is_live = models.BooleanField(default=False)
+    stream_url = models.URLField(blank=True, null=True)
     participant_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 

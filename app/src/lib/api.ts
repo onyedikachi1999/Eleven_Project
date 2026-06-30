@@ -78,6 +78,7 @@ export const scheduleApi = {
   upcoming: () => fetchApi('/schedules/upcoming/'),
   live: () => fetchApi('/schedules/live/'),
   create: (data: Record<string, unknown>) => fetchApi('/schedules/', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id: number) => fetchApi(`/schedules/${id}/`, { method: 'DELETE' }),
 };
 
 // Forum
