@@ -128,8 +128,29 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
     }
   }, [open, t.id])
 
-  const handleAmen = () => {
-    onUpdate(t.id)
+  const handleAmen = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to react')
+      return
+    }
+
+    const nextReacted = !hasReacted
+    setHasReacted(nextReacted)
+    setAmenCount((prev: number) => nextReacted ? prev + 1 : Math.max(0, prev - 1))
+
+    try {
+      const res = await testimonyApi.amen(t.id)
+      if (res) {
+        setHasReacted(res.reacted)
+        setAmenCount(res.amen_count)
+      }
+      onUpdate(t.id)
+    } catch (err) {
+      // Revert state on error
+      setHasReacted(hasReacted)
+      setAmenCount(amenCount)
+      toast.error('Failed to update reaction')
+    }
   }
 
   const handlePostComment = async (e: React.FormEvent) => {

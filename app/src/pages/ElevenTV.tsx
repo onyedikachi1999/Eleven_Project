@@ -95,21 +95,46 @@ export default function ElevenTV() {
           t={selectedVideo}
           open={detailOpen}
           onOpenChange={setDetailOpen}
-          onUpdate={() => {
-            const params: Record<string, string> = { limit: '20', type: 'video' }
-            if (activeTab !== 'all' && activeTab !== 'testimonies' && activeTab !== 'live') {
-              params.category = activeTab
-            }
-            testimonyApi.list(params)
-              .then((r: any) => {
-                const results = r.results ?? r
-                setVideos(results.filter((v: any) => v.thumbnail_url))
-                if (selectedVideo) {
-                  const updated = results.find((item: any) => item.id === selectedVideo.id)
-                  if (updated) setSelectedVideo(updated)
+          onUpdate={(id) => {
+            if (id) {
+              setVideos(prev => prev.map(v => {
+                if (v.id === id) {
+                  const nextReacted = !v.has_reacted
+                  return {
+                    ...v,
+                    has_reacted: nextReacted,
+                    amen_count: nextReacted ? v.amen_count + 1 : Math.max(0, v.amen_count - 1)
+                  }
                 }
+                return v
+              }))
+              setSelectedVideo(prev => {
+                if (prev && prev.id === id) {
+                  const nextReacted = !prev.has_reacted
+                  return {
+                    ...prev,
+                    has_reacted: nextReacted,
+                    amen_count: nextReacted ? prev.amen_count + 1 : Math.max(0, prev.amen_count - 1)
+                  }
+                }
+                return prev
               })
-              .catch(() => {})
+            } else {
+              const params: Record<string, string> = { limit: '20', type: 'video' }
+              if (activeTab !== 'all' && activeTab !== 'testimonies' && activeTab !== 'live') {
+                params.category = activeTab
+              }
+              testimonyApi.list(params)
+                .then((r: any) => {
+                  const results = r.results ?? r
+                  setVideos(results.filter((v: any) => v.thumbnail_url))
+                  if (selectedVideo) {
+                    const updated = results.find((item: any) => item.id === selectedVideo.id)
+                    if (updated) setSelectedVideo(updated)
+                  }
+                })
+                .catch(() => {})
+            }
           }}
         />
       )}
