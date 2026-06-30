@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ElevenLogo from '@/components/ElevenLogo'
 import {
-  Home, BookOpen, Church, Tv, Users, Menu, Search, Bell,
+  Home, BookOpen, Church, Tv, Users, Menu, Bell,
   User, LogOut, Shield, HandHeart, CreditCard
 } from 'lucide-react'
 
@@ -59,7 +59,6 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex" style={{ color: 'var(--eleven-text-secondary)' }}><Search size={18} /></button>
           {isAuthenticated && <button className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex relative" style={{ color: 'var(--eleven-text-secondary)' }}><Bell size={18} /><span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" /></button>}
           {isLoading ? <div className="w-8 h-8 rounded-full animate-pulse bg-gray-200" /> :
             isAuthenticated ? <div className="hidden md:flex items-center gap-2">
