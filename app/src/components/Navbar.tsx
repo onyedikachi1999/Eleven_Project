@@ -38,10 +38,10 @@ export default function Navbar() {
 
   return (
     <header 
-      className={`sticky top-0 z-50 transition-all duration-300 border-t-2 ${
+      className={`sticky top-0 z-50 transition-all duration-300 border-t-2 border-b ${
         scrolled 
-          ? 'bg-white/80 backdrop-blur-lg border-b shadow-[0_4px_30px_rgba(0,0,0,0.02)]' 
-          : 'bg-white/50 backdrop-blur-md border-b'
+          ? 'bg-white/80 dark:bg-[#121212]/80 backdrop-blur-lg shadow-[0_4px_30px_rgba(0,0,0,0.02)]' 
+          : 'bg-white/50 dark:bg-[#121212]/50 backdrop-blur-md'
       }`} 
       style={{ 
         borderColor: 'var(--eleven-border)', 
@@ -149,7 +149,7 @@ export default function Navbar() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <p className="font-medium text-sm">{user.name ?? 'User'}</p>
-                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 border capitalize">
+                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700 capitalize">
                             {user.subscription_plan || 'free'}
                           </span>
                         </div>
@@ -164,17 +164,17 @@ export default function Navbar() {
                   )}
                 </div>
                 <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
-                  {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}
+                  {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5 dark:bg-white/5' : 'hover:bg-black/5 dark:hover:bg-white/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}
                   
                   {isAuthenticated && (
                     <>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 pt-4 pb-1">Account</div>
-                      <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><User size={16} />My Dashboard</Link>
-                      {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Shield size={16} />Admin Panel</Link>}
+                      <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><User size={16} />My Dashboard</Link>
+                      {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Shield size={16} />Admin Panel</Link>}
                     </>
                   )}
                 </nav>
-                {isAuthenticated && <div className="p-4 border-t" style={{ borderColor: 'var(--eleven-border)' }}><button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><LogOut size={18} />Sign Out</button></div>}
+                {isAuthenticated && <div className="p-4 border-t" style={{ borderColor: 'var(--eleven-border)' }}><button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><LogOut size={18} />Sign Out</button></div>}
               </div>
             </SheetContent>
           </Sheet>
