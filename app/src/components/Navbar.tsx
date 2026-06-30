@@ -35,40 +35,94 @@ export default function Navbar() {
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md border-b shadow-sm' : 'bg-white border-b'}`} style={{ borderColor: 'var(--eleven-border)', height: 64 }}>
+    <header 
+      className={`sticky top-0 z-50 transition-all duration-300 border-t-2 ${
+        scrolled 
+          ? 'bg-white/80 backdrop-blur-lg border-b shadow-[0_4px_30px_rgba(0,0,0,0.02)]' 
+          : 'bg-white/50 backdrop-blur-md border-b'
+      }`} 
+      style={{ 
+        borderColor: 'var(--eleven-border)', 
+        borderTopColor: 'rgba(196, 149, 106, 0.7)', 
+        height: 64 
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
-        <Link to="/" className="flex items-center">
+        <Link to="/" className="flex items-center hover:opacity-95 transition-opacity">
           <ElevenLogo height={26} />
         </Link>
         
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-1.5">
           {navLinks.map(link => {
             const isActive = location.pathname === link.to
+            const LinkIcon = link.icon
             return (
               <Link
                 key={link.to}
                 to={link.to}
-                className="relative px-3 py-2 text-sm font-medium transition-colors rounded-md"
-                style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold tracking-wide transition-all duration-300 rounded-full ${
+                  isActive 
+                    ? 'text-[#8b6914] bg-[#c4956a]/15 shadow-sm border border-[#c4956a]/20' 
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/40 border border-transparent'
+                }`}
               >
+                <LinkIcon size={13} className={isActive ? 'text-[#8b6914]' : 'text-stone-400'} />
                 {link.label}
-                {isActive && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full" style={{ background: 'var(--eleven-accent)' }} />}
               </Link>
             )
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
-          {isAuthenticated && <button className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex relative" style={{ color: 'var(--eleven-text-secondary)' }}><Bell size={18} /><span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" /></button>}
-          {isLoading ? <div className="w-8 h-8 rounded-full animate-pulse bg-gray-200" /> :
-            isAuthenticated ? <div className="hidden md:flex items-center gap-2">
-              <Link to="/dashboard"><Avatar className="w-8 h-8 cursor-pointer"><AvatarImage src={user?.avatar ?? undefined} /><AvatarFallback className="text-xs font-medium" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user?.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback></Avatar></Link>
-              {isAdmin && <Link to="/admin"><Shield size={18} style={{ color: 'var(--eleven-accent)' }} /></Link>}
-            </div> :
+        <div className="flex items-center gap-3">
+          {isAuthenticated && (
+            <button 
+              className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex relative" 
+              style={{ color: 'var(--eleven-text-secondary)' }}
+            >
+              <Bell size={18} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            </button>
+          )}
+          
+          {isLoading ? (
+            <div className="w-8 h-8 rounded-full animate-pulse bg-stone-200" />
+          ) : isAuthenticated ? (
+            <div className="hidden md:flex items-center gap-3">
+              <Link to="/dashboard">
+                <Avatar className="w-8 h-8 cursor-pointer ring-2 ring-[#c4956a]/30 hover:ring-[#c4956a]/60 transition-all">
+                  <AvatarImage src={user?.avatar ?? undefined} />
+                  <AvatarFallback className="text-xs font-semibold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
+                    {(user?.name ?? 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+              {isAdmin && (
+                <Link to="/admin" className="p-1.5 rounded-lg hover:bg-black/5 transition-colors">
+                  <Shield size={18} style={{ color: 'var(--eleven-accent)' }} />
+                </Link>
+              )}
+            </div>
+          ) : (
             <div className="hidden md:flex items-center gap-2">
-              <Link to="/login"><Button variant="outline" size="sm" className="rounded-full px-4 font-medium text-xs" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Sign In</Button></Link>
-              <Link to="/register"><Button size="sm" className="rounded-full px-4 font-medium text-xs text-white" style={{ background: 'var(--eleven-accent)' }}>Register</Button></Link>
-            </div>}
+              <Link to="/login">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="rounded-full px-4 font-semibold text-xs h-8 border-[#c4956a]/40 text-[#8b6914] hover:bg-[#c4956a]/5 hover:border-[#c4956a]/70 transition-all"
+                >
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button 
+                  size="sm" 
+                  className="rounded-full px-4 font-semibold text-xs h-8 text-white bg-gradient-to-r from-[#c4956a] to-[#d4b28c] hover:brightness-105 transition-all shadow-sm"
+                >
+                  Register
+                </Button>
+              </Link>
+            </div>
+          )}
           
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild className="md:hidden"><Button variant="ghost" size="icon" className="h-8 w-8"><Menu size={20} /></Button></SheetTrigger>
