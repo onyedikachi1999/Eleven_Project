@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { testimonyApi, scheduleApi } from '@/lib/api'
 import { Play, Radio, Users, Clock, Eye } from 'lucide-react'
+import { TestimonyDetailModal } from '@/components/TestimonyCardShared'
 
 const channelTabs = ['all', 'testimonies', 'live', 'interviews', 'prayer', 'inspirational']
 
@@ -17,6 +18,8 @@ export default function ElevenTV() {
   const [activeTab, setActiveTab] = useState('all')
   const [videos, setVideos] = useState<any[]>([])
   const [liveSession, setLiveSession] = useState<any>(null)
+  const [selectedVideo, setSelectedVideo] = useState<any>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   useEffect(() => {
     const params: Record<string, string> = { limit: '20' }
@@ -37,7 +40,7 @@ export default function ElevenTV() {
       </div>
       {videos.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          <div className="relative aspect-video max-h-[480px] rounded-2xl overflow-hidden group cursor-pointer">
+          <div onClick={() => { setSelectedVideo(videos[0]); setDetailOpen(true); }} className="relative aspect-video max-h-[480px] rounded-2xl overflow-hidden group cursor-pointer">
             <img src={videos[0].thumbnail_url} alt={videos[0].title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
             <div className="absolute inset-0 flex items-center justify-center"><div className="w-20 h-20 rounded-full bg-white/90 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform"><Play size={28} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>
@@ -70,7 +73,7 @@ export default function ElevenTV() {
         {videos.length > 1 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {videos.slice(1).map(v => (
-              <div key={v.id} className="group cursor-pointer">
+              <div key={v.id} onClick={() => { setSelectedVideo(v); setDetailOpen(true); }} className="group cursor-pointer">
                 <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
                   <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/25 transition-colors" />
@@ -84,6 +87,28 @@ export default function ElevenTV() {
           </div>
         ) : <div className="text-center py-20"><p className="text-lg font-medium" style={{ color: 'var(--eleven-text)' }}>No videos yet</p></div>}
       </div>
+
+      {selectedVideo && (
+        <TestimonyDetailModal
+          t={selectedVideo}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          onUpdate={() => {
+            const params: Record<string, string> = { limit: '20' }
+            if (activeTab !== 'testimonies' && activeTab !== 'all') params.type = 'text'
+            testimonyApi.list(params)
+              .then((r: any) => {
+                const results = r.results ?? r
+                setVideos(results.filter((v: any) => v.thumbnail_url))
+                if (selectedVideo) {
+                  const updated = results.find((item: any) => item.id === selectedVideo.id)
+                  if (updated) setSelectedVideo(updated)
+                }
+              })
+              .catch(() => {})
+          }}
+        />
+      )}
     </div>
   )
 }
