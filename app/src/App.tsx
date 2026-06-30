@@ -19,31 +19,34 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import PageTransition from './components/PageTransition'
 
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--eleven-bg)' }}>
       <Navbar />
       <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/testimonies" element={<TestimonyHub />} />
-          <Route path="/prayer-room" element={<PrayerRoom />} />
-          <Route path="/tv" element={<ElevenTV />} />
-          <Route path="/joint-prayer" element={<JointPrayer />} />
-          <Route path="/prayer-circle/:id" element={<PrayerCircleDetail />} />
-          <Route path="/community" element={<CommunityForum />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/guidelines" element={<Guidelines />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <PageTransition>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/testimonies" element={<TestimonyHub />} />
+            <Route path="/prayer-room" element={<PrayerRoom />} />
+            <Route path="/tv" element={<ElevenTV />} />
+            <Route path="/joint-prayer" element={<JointPrayer />} />
+            <Route path="/prayer-circle/:id" element={<PrayerCircleDetail />} />
+            <Route path="/community" element={<CommunityForum />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/guidelines" element={<Guidelines />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </PageTransition>
       </main>
       <Footer />
       <Toaster position="bottom-right" />
