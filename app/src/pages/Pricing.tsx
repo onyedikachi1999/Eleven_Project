@@ -70,7 +70,7 @@ const plans: Plan[] = [
   {
     id: 'premium',
     name: 'Premium Watcher',
-    price: '₦15,000',
+    price: '₦7,500',
     period: 'month',
     description: 'Host prayer watch groups and access full features.',
     icon: Crown,
