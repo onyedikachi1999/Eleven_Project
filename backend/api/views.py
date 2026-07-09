@@ -468,6 +468,79 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             'message': f'Subscription upgraded to {plan.capitalize()} successfully!'
         })
 
+    @action(detail=False, methods=['post'], url_path='verify-payment')
+    def verify_payment(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+
+        transaction_id = request.data.get('transaction_id')
+        plan = request.data.get('plan')
+
+        if not transaction_id or not plan:
+            return Response({'detail': 'transaction_id and plan are required'}, status=400)
+
+        if plan not in ['regular', 'premium']:
+            return Response({'detail': 'Invalid subscription plan'}, status=400)
+
+        # Expected values (regular: NGN 5,000, premium: NGN 15,000)
+        expected_amount = 5000.0 if plan == 'regular' else 15000.0
+        expected_currency = 'NGN'
+
+        # Call Flutterwave verification API
+        secret_key = os.getenv('FLUTTERWAVE_SECRET_KEY')
+        base_url = os.getenv('FLUTTERWAVE_BASE_URL', 'https://api.flutterwave.com/v3')
+        
+        if not secret_key:
+            return Response({'detail': 'Flutterwave integration is misconfigured on server'}, status=500)
+
+        import requests
+        headers = {
+            'Authorization': f'Bearer {secret_key}',
+            'Content-Type': 'application/json',
+        }
+        url = f"{base_url}/transactions/{transaction_id}/verify"
+
+        try:
+            res = requests.get(url, headers=headers, timeout=10)
+            if not res.ok:
+                return Response({'detail': f'Flutterwave verification failed: HTTP {res.status_code}'}, status=400)
+            
+            res_data = res.json()
+            if res_data.get('status') != 'success':
+                return Response({'detail': f"Flutterwave returned error: {res_data.get('message', 'Unknown')}"}, status=400)
+            
+            tx_data = res_data.get('data', {})
+            
+            # Match fields securely
+            flw_status = tx_data.get('status')
+            flw_amount = float(tx_data.get('amount', 0))
+            flw_currency = tx_data.get('currency')
+
+            if flw_status != 'successful':
+                return Response({'detail': f'Transaction status is: {flw_status}'}, status=400)
+            
+            if flw_currency != expected_currency:
+                return Response({'detail': f'Currency mismatch: expected {expected_currency}, got {flw_currency}'}, status=400)
+            
+            if flw_amount < expected_amount:
+                return Response({'detail': f'Amount mismatch: expected {expected_amount}, got {flw_amount}'}, status=400)
+
+            # Verification successful! Upgrade user plan
+            user = request.user
+            user.subscription_plan = plan
+            user.save()
+
+            return Response({
+                'success': True,
+                'subscription_plan': user.subscription_plan,
+                'message': f'Subscription upgraded to {plan.capitalize()} successfully!'
+            })
+
+        except requests.exceptions.RequestException as e:
+            return Response({'detail': f'Network error contacting Flutterwave: {str(e)}'}, status=502)
+        except Exception as e:
+            return Response({'detail': f'Verification error: {str(e)}'}, status=500)
+
 
 class AdminViewSet(viewsets.ViewSet):
     def list_stats(self, request):

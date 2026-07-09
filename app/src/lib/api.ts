@@ -28,6 +28,7 @@ export const authApi = {
   register: (data: Record<string, unknown>) => fetchApi('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => fetchApi('/auth/logout/', { method: 'POST' }),
   upgrade: (plan: 'free' | 'regular' | 'premium') => fetchApi('/users/upgrade/', { method: 'POST', body: JSON.stringify({ plan }) }),
+  verifyPayment: (transactionId: string, plan: 'regular' | 'premium') => fetchApi('/users/verify-payment/', { method: 'POST', body: JSON.stringify({ transaction_id: transactionId, plan }) }),
   updateProfile: (data: Record<string, unknown>) => fetchApi('/users/update/', { method: 'PATCH', body: JSON.stringify(data) }),
   uploadAvatar: async (file: File) => {
     const formData = new FormData();

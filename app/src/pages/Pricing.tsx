@@ -70,7 +70,7 @@ const plans: Plan[] = [
   {
     id: 'premium',
     name: 'Premium Watcher',
-    price: '₦7,500',
+    price: '₦15,000',
     period: 'month',
     description: 'Host prayer watch groups and access full features.',
     icon: Crown,
@@ -107,16 +107,78 @@ export default function Pricing() {
       return
     }
 
+    if (planId === 'free') {
+      setLoadingPlan(planId)
+      try {
+        await authApi.upgrade(planId)
+        await refresh()
+        toast.success(`You are now on the Free plan.`)
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to update subscription')
+      } finally {
+        setLoadingPlan(null)
+      }
+      return
+    }
+
+    // Paid subscription plans: Regular (₦5,000) or Premium (₦15,000)
+    const amount = planId === 'regular' ? 5000 : 15000
     setLoadingPlan(planId)
-    try {
-      await authApi.upgrade(planId)
-      await refresh()
-      toast.success(`Welcome to the ${planId.toUpperCase()} plan!`)
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update subscription')
-    } finally {
+    
+    // Load Flutterwave checkout script dynamically
+    const script = document.createElement('script')
+    script.src = 'https://checkout.flutterwave.com/v3.js'
+    script.async = true
+    script.onload = () => {
+      // @ts-ignore
+      if (window.FlutterwaveCheckout) {
+        // @ts-ignore
+        window.FlutterwaveCheckout({
+          public_key: 'FLWPUBK-8bb02a9a87777dae1b6fcdcaf85969b0-X',
+          tx_ref: `eleven-${Date.now()}`,
+          amount: amount,
+          currency: 'NGN',
+          payment_options: 'card,ussd,banktransfer',
+          customer: {
+            email: user?.email || '',
+            name: user?.name || user?.username || 'User',
+          },
+          customizations: {
+            title: 'ELEVEN Subscription',
+            description: `Upgrade to ${planId.toUpperCase()} Plan`,
+            logo: 'https://eleven.com/logo.png',
+          },
+          callback: async (data: any) => {
+            console.log('Payment response:', data)
+            if (data.status === 'successful' || data.status === 'completed') {
+              try {
+                // Verify on Django backend
+                const res = await authApi.verifyPayment(data.transaction_id || data.id, planId)
+                await refresh()
+                toast.success(res.message || `Subscription upgraded to ${planId.toUpperCase()} successfully!`)
+                navigate('/dashboard')
+              } catch (err: any) {
+                toast.error(err.message || 'Verification failed. Please contact support.')
+              }
+            } else {
+              toast.error('Payment was not completed successfully.')
+            }
+            setLoadingPlan(null)
+          },
+          onclose: () => {
+            setLoadingPlan(null)
+          }
+        })
+      } else {
+        toast.error('Failed to load payment checkout SDK.')
+        setLoadingPlan(null)
+      }
+    }
+    script.onerror = () => {
+      toast.error('Failed to load payment checkout SDK.')
       setLoadingPlan(null)
     }
+    document.body.appendChild(script)
   }
 
   const currentPlan = user?.subscription_plan || 'free'
