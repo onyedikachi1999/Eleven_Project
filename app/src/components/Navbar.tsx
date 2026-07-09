@@ -86,13 +86,15 @@ export default function Navbar() {
           </button>
 
           {isAuthenticated && (
-            <button 
-              className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex relative" 
+            <Link 
+              to="/notifications"
+              className="p-2 rounded-lg transition-colors hover:bg-black/5 hover:dark:bg-white/5 hidden sm:flex relative cursor-pointer" 
               style={{ color: 'var(--eleven-text-secondary)' }}
+              title="Notifications"
             >
               <Bell size={18} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            </button>
+            </Link>
           )}
           
           {isLoading ? (
@@ -170,6 +172,7 @@ export default function Navbar() {
                     <>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 pt-4 pb-1">Account</div>
                       <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><User size={16} />My Dashboard</Link>
+                      <Link to="/notifications" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Bell size={16} />Notifications</Link>
                       {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Shield size={16} />Admin Panel</Link>}
                     </>
                   )}

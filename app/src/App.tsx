@@ -12,6 +12,7 @@ import PrayerCircleDetail from './pages/PrayerCircleDetail'
 import CommunityForum from './pages/CommunityForum'
 import Pricing from './pages/Pricing'
 import Dashboard from './pages/Dashboard'
+import Notifications from './pages/Notifications'
 import AdminPanel from './pages/AdminPanel'
 import About from './pages/About'
 import Guidelines from './pages/Guidelines'
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/community" element={<CommunityForum />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/about" element={<About />} />
             <Route path="/guidelines" element={<Guidelines />} />
