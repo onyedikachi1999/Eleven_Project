@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { BookOpen, HandHeart, Heart, MessageCircle, Clock, BookMarked, Users, Camera, Edit } from 'lucide-react'
+import { BookOpen, HandHeart, Heart, MessageCircle, Clock, BookMarked, Users, Camera, Edit, LogOut } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -38,12 +38,21 @@ function StatCard({ icon: Icon, label, value }: { icon: typeof BookOpen; label: 
 }
 
 export default function Dashboard() {
-  const { user, isLoading: authLoading, refresh } = useAuth()
+  const { user, isLoading: authLoading, refresh, logout } = useAuth()
   const [testimonies, setTestimonies] = useState<any[]>([])
   const [prayers, setPrayers] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [tLoading, setTLoading] = useState(true)
   const [pLoading, setPLoading] = useState(true)
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+      logout()
+    } catch {
+      toast.error('Failed to sign out')
+    }
+  }
 
   // Profile Edit states
   const [editOpen, setEditOpen] = useState(false)
@@ -139,6 +148,13 @@ export default function Dashboard() {
                   Manage Subscription
                 </Button>
               </Link>
+              <Button 
+                onClick={handleLogout}
+                variant="outline"
+                className="rounded-full px-5 text-xs h-9 font-semibold text-red-500 border-red-200 hover:text-red-600 hover:bg-red-50 dark:border-red-950/40 dark:hover:bg-red-950/20 cursor-pointer"
+              >
+                <LogOut size={13} className="mr-1.5" /> Sign Out
+              </Button>
             </div>
           </div>
         </div>
