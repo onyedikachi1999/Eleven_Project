@@ -389,6 +389,83 @@ def api_logout(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+def api_google_auth(request):
+    token = request.data.get('credential')
+    if not token:
+        return Response({'detail': 'Google ID token (credential) is required'}, status=400)
+
+    # Call Google's tokeninfo API to verify the token securely
+    import requests
+    verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+
+    try:
+        res = requests.get(verify_url, timeout=10)
+        if not res.ok:
+            return Response({'detail': 'Invalid Google token'}, status=400)
+        
+        token_info = res.json()
+        
+        # Verify email is verified
+        if token_info.get('email_verified') != 'true' and token_info.get('email_verified') != True:
+            return Response({'detail': 'Google email is not verified'}, status=400)
+        
+        email = token_info.get('email')
+        first_name = token_info.get('given_name', '')
+        last_name = token_info.get('family_name', '')
+        picture = token_info.get('picture', '')
+
+        if not email:
+            return Response({'detail': 'Email not found in Google account info'}, status=400)
+
+        # Get or create User
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = User.objects.filter(email=email).first()
+
+        if not user:
+            # Create a new user
+            username = email.split('@')[0]
+            # Ensure username uniqueness
+            original_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{original_username}{counter}"
+                counter += 1
+
+            # Generate random password
+            import secrets
+            random_password = secrets.token_hex(16)
+            
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=random_password,
+                first_name=first_name,
+                last_name=last_name,
+                avatar=picture
+            )
+
+        # Log user in
+        django_login(request, user)
+        return Response({
+            'detail': 'Logged in successfully',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            }
+        })
+
+    except requests.exceptions.RequestException as e:
+        return Response({'detail': f'Network error verifying token: {str(e)}'}, status=502)
+    except Exception as e:
+        return Response({'detail': f'Authentication error: {str(e)}'}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def api_register(request):
     username = request.data.get('username')
     email = request.data.get('email')

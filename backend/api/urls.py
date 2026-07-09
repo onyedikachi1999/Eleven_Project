@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import api_login, api_logout, api_register
+from .views import api_login, api_logout, api_register, api_google_auth
 
 router = DefaultRouter()
 router.register(r'testimonies', views.TestimonyViewSet, basename='testimony')
@@ -18,6 +18,7 @@ urlpatterns = [
     path('auth/login/', api_login, name='api_login'),
     path('auth/register/', api_register, name='api_register'),
     path('auth/logout/', api_logout, name='api_logout'),
+    path('auth/google/', api_google_auth, name='api_google_auth'),
     path('auth/me/', views.UserViewSet.as_view({'get': 'me'}), name='auth_me'),
     path('admin/stats/', views.AdminViewSet.as_view({'get': 'list_stats'}), name='admin_stats'),
     path('admin/users/', views.AdminViewSet.as_view({'get': 'list_users'}), name='admin_users'),

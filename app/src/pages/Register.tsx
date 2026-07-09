@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,42 @@ export default function Register() {
     first_name: '',
     last_name: '',
   })
+
+  const handleGoogleCredentialResponse = async (response: any) => {
+    try {
+      const res = await fetch('http://localhost:8000/api/auth/google/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential }),
+      })
+      if (res.ok) {
+        toast('Welcome to ELEVEN!')
+        window.location.href = '/'
+      } else {
+        const err = await res.json()
+        toast.error(err.detail || 'Google authentication failed')
+      }
+    } catch {
+      toast.error('Connection failed. Is the Django server running?')
+    }
+  }
+
+  useEffect(() => {
+    // @ts-ignore
+    if (window.google) {
+      // @ts-ignore
+      window.google.accounts.id.initialize({
+        client_id: '433107054238-d621b16k4q9t7a760r1bmbj5a6p19d7d.apps.googleusercontent.com',
+        callback: handleGoogleCredentialResponse,
+      })
+      // @ts-ignore
+      window.google.accounts.id.renderButton(
+        document.getElementById('google-signup-btn'),
+        { theme: 'outline', size: 'large', width: 340 }
+      )
+    }
+  }, [])
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -145,6 +181,10 @@ export default function Register() {
                 {loading ? 'Creating Account...' : 'Sign Up'}
               </Button>
             </form>
+            <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t" style={{ borderColor: 'var(--eleven-border)' }} /></div><div className="relative flex justify-center text-xs"><span className="px-2" style={{ background: 'var(--eleven-bg)', color: 'var(--eleven-text-muted)' }}>or</span></div></div>
+            <div className="flex justify-center mb-4">
+              <div id="google-signup-btn"></div>
+            </div>
             <p className="text-center text-xs mt-4" style={{ color: 'var(--eleven-text-muted)' }}>
               Already have an account?{' '}
               <Link to="/login" className="font-semibold" style={{ color: 'var(--eleven-accent)' }}>Sign In</Link>
