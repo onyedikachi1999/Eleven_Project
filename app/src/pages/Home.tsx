@@ -15,7 +15,7 @@ import { TestimonyCard, TestimonyDetailModal, categoryIcons, categoryColors, tim
 // ── Hero Section ──
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden flex items-center justify-center text-center px-4" style={{ minHeight: 480, background: 'linear-gradient(135deg, #F5F0EB 0%, #FAF9F6 60%, #F5F0EB 100%)' }}>
+    <section className="relative overflow-hidden flex items-center justify-center text-center px-4" style={{ minHeight: 480, background: 'linear-gradient(135deg, var(--eleven-surface-elevated) 0%, var(--eleven-bg) 60%, var(--eleven-surface-elevated) 100%)' }}>
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full" style={{ background: 'radial-gradient(circle, var(--eleven-accent) 0%, transparent 70%)' }} />
       </div>
@@ -132,7 +132,7 @@ function SlideShowBoard() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
                 <span className="flex items-center gap-1.5 text-xs text-white/80"><MetaIcon size={14} /> {metaLabel}</span>
                 <Link to={slide.link} className="inline-block">
-                  <Button className="rounded-full px-5 font-semibold text-xs h-9 text-stone-900 bg-white hover:bg-stone-100 transition-all hover:scale-105">
+                  <Button className="rounded-full px-5 font-semibold text-xs h-9 text-stone-900 bg-white hover:bg-stone-100 transition-all hover:scale-105 keep-white keep-dark">
                     {slide.cta_text || 'Learn More'}
                   </Button>
                 </Link>
@@ -326,7 +326,7 @@ function LiveBanner() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-white/80 flex items-center gap-1"><Users size={14} /> {live.participant_count} joined</span>
-          <Link to="/joint-prayer"><Button size="sm" className="bg-white hover:bg-white/90 font-semibold text-xs" style={{ color: '#7B8B6F' }}>Join Now</Button></Link>
+          <Link to="/joint-prayer"><Button size="sm" className="bg-white hover:bg-white/90 font-semibold text-xs keep-white" style={{ color: '#7B8B6F' }}>Join Now</Button></Link>
         </div>
       </div>
     </section>
@@ -366,7 +366,7 @@ function PrayerSection() {
   }, [])
 
   return (
-    <section className="py-16 px-4 sm:px-6 bg-white">
+    <section className="py-16 px-4 sm:px-6" style={{ background: 'var(--eleven-bg)' }}>
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold" style={{ color: 'var(--eleven-text)' }}>Prayer Requests</h2>

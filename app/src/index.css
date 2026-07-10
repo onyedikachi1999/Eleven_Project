@@ -140,15 +140,15 @@
 }
 
 /* Universal Dark Mode Adaptation overrides to prevent text disappearance and support custom class tokens */
-.dark .bg-white,
-.dark .bg-card,
-.dark .bg-background {
+.dark .bg-white:not(.keep-white),
+.dark .bg-card:not(.keep-white),
+.dark .bg-background:not(.keep-white) {
   background-color: var(--eleven-surface) !important;
 }
 
-.dark .text-stone-900,
-.dark .text-black,
-.dark .text-stone-800 {
+.dark .text-stone-900:not(.keep-dark),
+.dark .text-black:not(.keep-dark),
+.dark .text-stone-800:not(.keep-dark) {
   color: var(--eleven-text) !important;
 }
 
