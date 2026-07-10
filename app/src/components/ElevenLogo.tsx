@@ -1,5 +1,5 @@
 export default function ElevenLogo({ className = '', height = 28 }: { className?: string; height?: number }) {
-  const width = Math.round(height * 1.14)
+  const width = Math.round(height * 1.31)
   
   return (
     <img 
