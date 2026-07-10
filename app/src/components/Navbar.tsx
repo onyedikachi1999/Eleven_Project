@@ -51,7 +51,7 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
         <Link to="/" className="flex items-center hover:opacity-95 transition-opacity">
-          <ElevenLogo height={26} />
+          <ElevenLogo height={44} />
         </Link>
         
         <nav className="hidden md:flex items-center gap-1.5">

@@ -25,7 +25,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="mb-4">
-              <ElevenLogo height={28} />
+              <ElevenLogo height={52} />
             </div>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--eleven-text-muted)' }}>
               A global community of faith, testimonies, and prayer.
