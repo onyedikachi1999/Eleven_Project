@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Check, X, Shield, Star, Crown, Landmark } from 'lucide-react'
 
+// Replace these with your actual Flutterwave Payment Plan IDs created on the Flutterwave Dashboard.
+// Leave as empty strings to run transactions as one-off test payments.
+const FLUTTERWAVE_REGULAR_PLAN_ID = ''
+const FLUTTERWAVE_PREMIUM_PLAN_ID = ''
+
 interface PlanFeature {
   name: string
   included: boolean
@@ -132,8 +137,8 @@ export default function Pricing() {
     script.onload = () => {
       // @ts-ignore
       if (window.FlutterwaveCheckout) {
-        // @ts-ignore
-        window.FlutterwaveCheckout({
+        const planIdFlw = planId === 'regular' ? FLUTTERWAVE_REGULAR_PLAN_ID : FLUTTERWAVE_PREMIUM_PLAN_ID;
+        const config: any = {
           public_key: 'FLWPUBK-8bb02a9a87777dae1b6fcdcaf85969b0-X',
           tx_ref: `eleven-${Date.now()}`,
           amount: amount,
@@ -168,7 +173,14 @@ export default function Pricing() {
           onclose: () => {
             setLoadingPlan(null)
           }
-        })
+        };
+
+        if (planIdFlw) {
+          config.payment_plan = planIdFlw;
+        }
+
+        // @ts-ignore
+        window.FlutterwaveCheckout(config)
       } else {
         toast.error('Failed to load payment checkout SDK.')
         setLoadingPlan(null)

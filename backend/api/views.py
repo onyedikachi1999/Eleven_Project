@@ -602,14 +602,34 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             if flw_amount < expected_amount:
                 return Response({'detail': f'Amount mismatch: expected {expected_amount}, got {flw_amount}'}, status=400)
 
+            # Fetch active subscription from Flutterwave to store ID
+            sub_id = None
+            try:
+                sub_url = f"{base_url}/subscriptions?email={user.email}"
+                sub_res = requests.get(sub_url, headers=headers, timeout=10)
+                if sub_res.ok:
+                    sub_data = sub_res.json()
+                    if sub_data.get('status') == 'success':
+                        subs = sub_data.get('data', [])
+                        # Find the active subscription matching this user
+                        for s in subs:
+                            if s.get('status') == 'active':
+                                sub_id = str(s.get('id'))
+                                break
+            except Exception as e:
+                print(f"Error fetching subscription details: {str(e)}")
+
             # Verification successful! Upgrade user plan
             user = request.user
             user.subscription_plan = plan
+            if sub_id:
+                user.flutterwave_subscription_id = sub_id
             user.save()
 
             return Response({
                 'success': True,
                 'subscription_plan': user.subscription_plan,
+                'flutterwave_subscription_id': user.flutterwave_subscription_id,
                 'message': f'Subscription upgraded to {plan.capitalize()} successfully!'
             })
 
@@ -617,6 +637,47 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'detail': f'Network error contacting Flutterwave: {str(e)}'}, status=502)
         except Exception as e:
             return Response({'detail': f'Verification error: {str(e)}'}, status=500)
+
+    @action(detail=False, methods=['post'], url_path='cancel-subscription')
+    def cancel_subscription(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        
+        user = request.user
+        sub_id = user.flutterwave_subscription_id
+
+        # If there's an active Flutterwave subscription ID, cancel it with Flutterwave API
+        if sub_id:
+            secret_key = os.getenv('FLUTTERWAVE_SECRET_KEY')
+            base_url = os.getenv('FLUTTERWAVE_BASE_URL', 'https://api.flutterwave.com/v3')
+            
+            if not secret_key:
+                return Response({'detail': 'Flutterwave integration is misconfigured on server'}, status=500)
+
+            import requests
+            headers = {
+                'Authorization': f'Bearer {secret_key}',
+                'Content-Type': 'application/json',
+            }
+            # Flutterwave endpoint to cancel subscription: PUT /subscriptions/{id}/cancel
+            url = f"{base_url}/subscriptions/{sub_id}/cancel"
+            
+            try:
+                res = requests.put(url, headers=headers, timeout=10)
+                print(f"Flutterwave cancel response: {res.status_code} - {res.text}")
+            except Exception as e:
+                print(f"Error calling Flutterwave cancel: {str(e)}")
+
+        # Revert user to free plan
+        user.subscription_plan = 'free'
+        user.flutterwave_subscription_id = None
+        user.save()
+
+        return Response({
+            'success': True,
+            'subscription_plan': user.subscription_plan,
+            'message': 'Subscription cancelled successfully. You are now on the Free plan.'
+        })
 
 
 class AdminViewSet(viewsets.ViewSet):

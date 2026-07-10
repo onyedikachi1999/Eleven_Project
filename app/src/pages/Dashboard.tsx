@@ -45,12 +45,30 @@ export default function Dashboard() {
   const [tLoading, setTLoading] = useState(true)
   const [pLoading, setPLoading] = useState(true)
 
+  const [cancellingSub, setCancellingSub] = useState(false)
+
   const handleLogout = async () => {
     try {
       await authApi.logout()
       logout()
     } catch {
       toast.error('Failed to sign out')
+    }
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!window.confirm("Are you sure you want to end your monthly subscription? You will lose access to paid features immediately.")) {
+      return
+    }
+    setCancellingSub(true)
+    try {
+      await authApi.cancelSubscription()
+      toast.success("Your subscription has been cancelled successfully.")
+      refresh()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel subscription.")
+    } finally {
+      setCancellingSub(false)
     }
   }
 
@@ -148,6 +166,16 @@ export default function Dashboard() {
                   Manage Subscription
                 </Button>
               </Link>
+              {user.subscription_plan && user.subscription_plan !== 'free' && (
+                <Button 
+                  onClick={handleCancelSubscription}
+                  disabled={cancellingSub}
+                  variant="outline"
+                  className="rounded-full px-5 text-xs h-9 font-semibold text-stone-500 border-stone-200 hover:text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  {cancellingSub ? 'Cancelling...' : 'Cancel Subscription'}
+                </Button>
+              )}
               <Button 
                 onClick={handleLogout}
                 variant="outline"
