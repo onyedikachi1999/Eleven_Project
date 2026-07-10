@@ -44,3 +44,6 @@ app/.env.production
 app/.env.development
 app/package-lock.json
 package-lock.json
+
+# Large PDF master assets
+eleven logo PDF.pdf
