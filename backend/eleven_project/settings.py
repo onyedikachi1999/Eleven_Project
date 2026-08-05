@@ -103,10 +103,17 @@ else:
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Secure cookie settings for production
+# CSRF trusted origins — required for cross-origin POST requests
+_CSRF_TRUSTED = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if _CSRF_TRUSTED:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _CSRF_TRUSTED.split(',') if o.strip()]
+
+# Cookie settings for cross-origin auth (frontend and backend on different domains)
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'None'
     CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = 'None'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 REST_FRAMEWORK = {
