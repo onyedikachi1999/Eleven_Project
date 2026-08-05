@@ -298,7 +298,7 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
             from .models import CircleMessage
             from .serializers import CircleMessageSerializer
             msg = CircleMessage.objects.create(circle=circle, user=request.user, content=content, image=image_url)
-            return Response(CircleMessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+            return Response(CircleMessageSerializer(msg, context={'request': request}).data, status=status.HTTP_201_CREATED)
             
         else:
             if not circle.is_public and not is_member:
@@ -307,8 +307,46 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
             from .models import CircleMessage
             from .serializers import CircleMessageSerializer
             messages = CircleMessage.objects.filter(circle=circle).order_by('created_at')
-            serializer = CircleMessageSerializer(messages[:100], many=True)
+            serializer = CircleMessageSerializer(messages[:100], many=True, context={'request': request})
             return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='messages/(?P<message_id>[0-9]+)/react')
+    def react(self, request, pk=None, message_id=None):
+        circle = self.get_object()
+        is_member = request.user.is_authenticated and CircleMember.objects.filter(circle=circle, user=request.user).exists()
+
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        if not is_member:
+            return Response({'detail': 'You must be a member to react'}, status=403)
+
+        reaction_type = request.data.get('reaction_type', '').strip()
+        valid_types = ['amen', 'love', 'fire', 'strength', 'peace']
+        if reaction_type not in valid_types:
+            return Response({'detail': f'Invalid reaction. Must be one of: {valid_types}'}, status=400)
+
+        from .models import CircleMessage, CircleMessageReaction
+        try:
+            message = CircleMessage.objects.get(id=message_id, circle=circle)
+        except CircleMessage.DoesNotExist:
+            return Response({'detail': 'Message not found'}, status=404)
+
+        # Toggle: if reaction exists, remove it; otherwise add it
+        existing = CircleMessageReaction.objects.filter(message=message, user=request.user, reaction_type=reaction_type)
+        if existing.exists():
+            existing.delete()
+            action_type = 'removed'
+        else:
+            CircleMessageReaction.objects.create(message=message, user=request.user, reaction_type=reaction_type)
+            action_type = 'added'
+
+        # Return updated reaction counts and user reactions
+        from django.db.models import Count
+        counts = CircleMessageReaction.objects.filter(message=message).values('reaction_type').annotate(count=Count('id'))
+        reactions = {item['reaction_type']: item['count'] for item in counts}
+        user_reactions = list(CircleMessageReaction.objects.filter(message=message, user=request.user).values_list('reaction_type', flat=True))
+
+        return Response({'action': action_type, 'reactions': reactions, 'user_reactions': user_reactions})
 
     @action(detail=True, methods=['get'])
     def members(self, request, pk=None):

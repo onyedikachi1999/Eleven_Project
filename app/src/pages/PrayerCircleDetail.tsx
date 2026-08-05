@@ -27,6 +27,14 @@ const categoryColors: Record<string, { bg: string; text: string; light: string }
   general: { bg: '#E8E4DE', text: '#6B6560', light: '#F0EEEB' },
 }
 
+const REACTIONS = [
+  { type: 'amen', emoji: '🙏', label: 'Amen' },
+  { type: 'love', emoji: '❤️', label: 'Love' },
+  { type: 'fire', emoji: '🔥', label: 'Fire' },
+  { type: 'strength', emoji: '💪', label: 'Strength' },
+  { type: 'peace', emoji: '🕊️', label: 'Peace' },
+]
+
 export default function PrayerCircleDetail() {
   const { id } = useParams<{ id: string }>()
   const circleId = parseInt(id || '0', 10)
@@ -151,6 +159,24 @@ export default function PrayerCircleDetail() {
       toast.error(err.message || 'Failed to send message')
     }
     setPosting(false)
+  }
+
+  const handleReact = async (messageId: number, reactionType: string) => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to react')
+      return
+    }
+    try {
+      const result = await circleApi.reactToMessage(circleId, messageId, reactionType)
+      // Update the message in state with new reaction data
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, reactions: result.reactions, user_reactions: result.user_reactions }
+          : msg
+      ))
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to react')
+    }
   }
 
   if (loading) {
@@ -299,6 +325,28 @@ export default function PrayerCircleDetail() {
                           {msg.image && (
                             <img src={msg.image} alt="Shared image" className="mt-2 max-w-full max-h-64 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity" style={{ borderColor: 'var(--eleven-border)' }} onClick={() => window.open(msg.image, '_blank')} />
                           )}
+                          {/* Reaction bar */}
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            {REACTIONS.map(r => {
+                              const count = msg.reactions?.[r.type] || 0
+                              const isActive = msg.user_reactions?.includes(r.type)
+                              return (
+                                <button
+                                  key={r.type}
+                                  onClick={() => handleReact(msg.id, r.type)}
+                                  title={r.label}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all duration-200 hover:scale-105 ${
+                                    isActive
+                                      ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm'
+                                      : 'border-transparent bg-stone-50 text-stone-500 hover:bg-stone-100 hover:border-stone-200'
+                                  }`}
+                                >
+                                  <span className="text-sm">{r.emoji}</span>
+                                  {count > 0 && <span>{count}</span>}
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
                       </div>
                     ))}

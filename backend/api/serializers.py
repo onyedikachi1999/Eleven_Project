@@ -160,10 +160,12 @@ class ForumReplySerializer(serializers.ModelSerializer):
 class CircleMessageSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
     author_avatar = serializers.SerializerMethodField()
+    reactions = serializers.SerializerMethodField()
+    user_reactions = serializers.SerializerMethodField()
 
     class Meta:
         model = CircleMessage
-        fields = ['id', 'content', 'image', 'created_at', 'user_id', 'author_name', 'author_avatar']
+        fields = ['id', 'content', 'image', 'created_at', 'user_id', 'author_name', 'author_avatar', 'reactions', 'user_reactions']
 
     def get_author_name(self, obj):
         if obj.user:
@@ -174,6 +176,19 @@ class CircleMessageSerializer(serializers.ModelSerializer):
         if obj.user:
             return obj.user.avatar
         return None
+
+    def get_reactions(self, obj):
+        from .models import CircleMessageReaction
+        from django.db.models import Count
+        counts = CircleMessageReaction.objects.filter(message=obj).values('reaction_type').annotate(count=Count('id'))
+        return {item['reaction_type']: item['count'] for item in counts}
+
+    def get_user_reactions(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return []
+        from .models import CircleMessageReaction
+        return list(CircleMessageReaction.objects.filter(message=obj, user=request.user).values_list('reaction_type', flat=True))
 
 
 class CircleMemberSerializer(serializers.ModelSerializer):

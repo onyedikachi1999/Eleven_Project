@@ -260,6 +260,24 @@ class CircleMessage(models.Model):
         ordering = ['created_at']
 
 
+class CircleMessageReaction(models.Model):
+    REACTION_CHOICES = [
+        ('amen', '🙏'),
+        ('love', '❤️'),
+        ('fire', '🔥'),
+        ('strength', '💪'),
+        ('peace', '🕊️'),
+    ]
+    message = models.ForeignKey(CircleMessage, on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    reaction_type = models.CharField(max_length=20, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'circle_message_reactions'
+        unique_together = ['message', 'user', 'reaction_type']
+
+
 class Slide(models.Model):
     badge = models.CharField(max_length=50, blank=True)
     title = models.CharField(max_length=255)

@@ -103,6 +103,8 @@ export const circleApi = {
     if (res.status === 204) return null;
     return res.json();
   },
+  reactToMessage: (circleId: number, messageId: number, reactionType: string) =>
+    fetchApi(`/circles/${circleId}/messages/${messageId}/react/`, { method: 'POST', body: JSON.stringify({ reaction_type: reactionType }) }),
   getMembers: (id: number) => fetchApi(`/circles/${id}/members/`),
 };
 
