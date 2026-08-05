@@ -275,7 +275,7 @@ class CircleMessageReaction(models.Model):
 
     class Meta:
         db_table = 'circle_message_reactions'
-        unique_together = ['message', 'user', 'reaction_type']
+        unique_together = ['message', 'user']
 
 
 class Slide(models.Model):

@@ -331,12 +331,20 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
         except CircleMessage.DoesNotExist:
             return Response({'detail': 'Message not found'}, status=404)
 
-        # Toggle: if reaction exists, remove it; otherwise add it
-        existing = CircleMessageReaction.objects.filter(message=message, user=request.user, reaction_type=reaction_type)
-        if existing.exists():
-            existing.delete()
-            action_type = 'removed'
+        # Enforce single reaction per user per message
+        existing = CircleMessageReaction.objects.filter(message=message, user=request.user).first()
+        if existing:
+            if existing.reaction_type == reaction_type:
+                # Clicked same reaction -> toggle off / remove
+                existing.delete()
+                action_type = 'removed'
+            else:
+                # Clicked different reaction -> switch reaction
+                existing.reaction_type = reaction_type
+                existing.save()
+                action_type = 'switched'
         else:
+            # First reaction on this message
             CircleMessageReaction.objects.create(message=message, user=request.user, reaction_type=reaction_type)
             action_type = 'added'
 
