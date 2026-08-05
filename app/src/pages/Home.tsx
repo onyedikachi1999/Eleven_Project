@@ -15,31 +15,14 @@ import ElevenFaithBanner from '@/components/ElevenFaithBanner'
 
 // ── Hero Section ──
 function HeroSection() {
-  const scrollToContent = () => {
-    const el = document.getElementById('slideshow-board') || document.getElementById('trending-section')
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
-    } else {
-      window.scrollTo({ top: window.innerHeight * 0.7, behavior: 'smooth' })
-    }
-  }
-
   return (
     <section className="relative overflow-hidden" style={{ background: 'var(--eleven-bg, #f8f9fa)' }}>
       <ElevenFaithBanner variant="hero" />
       {/* CTA Buttons */}
-      <div className="relative z-10 flex flex-col sm:flex-row gap-3 justify-center pb-14 -mt-4 px-4">
+      <div className="relative z-10 flex flex-col sm:flex-row gap-3 justify-center pb-12 -mt-4 px-4">
         <Link to="/testimonies"><Button size="lg" className="rounded-full px-6 font-semibold text-sm" style={{ background: 'var(--eleven-accent)' }}>Share Testimony</Button></Link>
         <Link to="/prayer-room"><Button variant="outline" size="lg" className="rounded-full px-6 font-semibold text-sm" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Enter Prayer Room</Button></Link>
       </div>
-      <button
-        onClick={scrollToContent}
-        aria-label="Scroll down to content"
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 animate-bounce p-2 rounded-full cursor-pointer hover:opacity-80 transition-opacity z-20"
-        style={{ color: 'var(--eleven-text-muted)' }}
-      >
-        <ChevronDown size={24} />
-      </button>
     </section>
   )
 }
