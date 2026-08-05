@@ -124,7 +124,7 @@ export const adminApi = {
   upload: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch('http://localhost:8000/api/admin/upload/', {
+    const res = await fetch(`${API_BASE}/admin/upload/`, {
       method: 'POST',
       credentials: 'include',
       body: formData,

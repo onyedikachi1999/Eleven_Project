@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { authApi } from '@/lib/api'
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000') + '/api';
+
 export default function Register() {
   const [formData, setFormData] = useState({
     username: '',
@@ -16,7 +18,7 @@ export default function Register() {
 
   const handleGoogleCredentialResponse = async (response: any) => {
     try {
-      const res = await fetch('http://localhost:8000/api/auth/google/', {
+      const res = await fetch(`${API_BASE}/auth/google/`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

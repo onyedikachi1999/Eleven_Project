@@ -3,6 +3,10 @@ import { Link } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { authApi } from '@/lib/api'
+
+// API base fallback
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000') + '/api'
 
 export default function Login() {
   const [username, setUsername] = useState('')
@@ -11,7 +15,7 @@ export default function Login() {
 
   const handleGoogleCredentialResponse = async (response: any) => {
     try {
-      const res = await fetch('http://localhost:8000/api/auth/google/', {
+      const res = await fetch(`${API_BASE}/auth/google/`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -49,21 +53,11 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/api/auth/login/', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
-      if (res.ok) {
-        toast('Welcome back!')
-        window.location.href = '/'
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Invalid credentials')
-      }
-    } catch {
-      toast.error('Connection failed. Is the Django server running?')
+      await authApi.login(username, password)
+      toast.success('Welcome back!')
+      window.location.href = '/'
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid credentials')
     }
     setLoading(false)
   }
