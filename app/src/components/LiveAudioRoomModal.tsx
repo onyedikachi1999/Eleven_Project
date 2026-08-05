@@ -64,15 +64,22 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
   const audioContextRef = useRef<AudioContext | null>(null)
   const animFrameRef = useRef<number | null>(null)
 
-  const isHost = session?.is_host || user?.role === 'admin' || user?.username === session?.host_name
+  const isModerator = Boolean(session?.is_host || user?.role === 'admin' || user?.username === session?.host_name)
 
-  // Reset timer whenever a new session opens
+  // Reset timer & mute state whenever a new session opens
   useEffect(() => {
     if (open) {
       const dur = (session?.duration ? parseInt(String(session.duration), 10) : 30) * 60
       setTimeLeft(dur)
+      // Non-moderators start muted in listen-only mode
+      if (!isModerator) {
+        setIsMuted(true)
+      } else {
+        setIsMuted(false)
+        startAudioStream()
+      }
     }
-  }, [open, session])
+  }, [open, session, isModerator])
 
   // Countdown timer effect
   useEffect(() => {
@@ -113,10 +120,10 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
 
     // Simulate audio level pulse
     const audioInterval = setInterval(() => {
-      if (!isMuted) {
+      if (isModerator && !isMuted) {
         setAudioLevel(Math.floor(Math.random() * 55) + 35)
       } else {
-        setAudioLevel(5)
+        setAudioLevel(12)
       }
     }, 200)
 
@@ -125,16 +132,17 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
       clearInterval(audioInterval)
       stopAudioStream()
     }
-  }, [open, isMuted])
+  }, [open, isMuted, isModerator])
 
   const startAudioStream = async () => {
+    if (!isModerator) return
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
       setIsLiveStreaming(true)
-      toast.success('Microphone connected — You are speaking live!')
+      toast.success('Microphone connected — You are broadcasting live as Moderator!')
     } catch {
-      toast.info('Audio room joined in listener mode.')
+      toast.info('Broadcasting live in moderator voice mode.')
     }
   }
 
@@ -154,11 +162,16 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
   }
 
   const toggleMic = () => {
-    if (!isLiveStreaming && !isMuted) {
+    if (!isModerator) {
+      toast.info('Only the session moderator can speak. You are in listen-only mode.')
+      return
+    }
+
+    if (!isLiveStreaming && isMuted) {
       startAudioStream()
     }
     setIsMuted(!isMuted)
-    toast(isMuted ? 'Microphone unmuted' : 'Microphone muted')
+    toast(isMuted ? 'Moderator mic unmuted' : 'Moderator mic muted')
   }
 
   const sendReaction = (emoji: string, label: string) => {
@@ -345,17 +358,24 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
         {/* ── Bottom Controls Bar ── */}
         <div className="p-4 bg-[#161c27] border-t border-white/10 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Button
-              onClick={toggleMic}
-              variant="outline"
-              size="sm"
-              className={`rounded-full h-10 px-4 flex items-center gap-2 border-white/20 ${
-                isMuted ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-              }`}
-            >
-              {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
-              <span className="text-xs font-semibold">{isMuted ? 'Muted' : 'Speaking'}</span>
-            </Button>
+            {isModerator ? (
+              <Button
+                onClick={toggleMic}
+                variant="outline"
+                size="sm"
+                className={`rounded-full h-10 px-4 flex items-center gap-2 border-white/20 cursor-pointer ${
+                  isMuted ? 'bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                }`}
+              >
+                {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                <span className="text-xs font-semibold">{isMuted ? 'Unmute Mic' : 'Broadcasting'}</span>
+              </Button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/5 border border-white/10 text-stone-400 text-xs font-medium">
+                <MicOff size={14} className="text-amber-400" />
+                <span>Listen-Only Mode</span>
+              </div>
+            )}
 
             <Button
               onClick={() => setIsDeafened(!isDeafened)}
