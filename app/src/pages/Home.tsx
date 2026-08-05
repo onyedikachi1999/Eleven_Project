@@ -16,7 +16,7 @@ import ElevenFaithBanner from '@/components/ElevenFaithBanner'
 // ── Hero Section ──
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden" style={{ background: '#f8f9fa' }}>
+    <section className="relative overflow-hidden" style={{ background: 'var(--eleven-bg, #f8f9fa)' }}>
       <ElevenFaithBanner variant="hero" />
       {/* CTA Buttons */}
       <div className="relative z-10 flex flex-col sm:flex-row gap-3 justify-center pb-12 -mt-4 px-4">
