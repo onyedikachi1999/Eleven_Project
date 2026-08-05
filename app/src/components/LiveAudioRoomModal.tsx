@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import {
   Mic, MicOff, Volume2, VolumeX, Users, PhoneOff,
-  Send, Sparkles, Flame, HandHeart, Radio, Shield, MessageCircle
+  Send, Sparkles, Flame, HandHeart, Radio, Shield, MessageCircle, Clock
 } from 'lucide-react'
 
 interface FloatingReaction {
@@ -56,11 +56,48 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
   const [isLiveStreaming, setIsLiveStreaming] = useState(false)
   const [audioLevel, setAudioLevel] = useState(60)
 
+  // Session timer countdown
+  const initialSeconds = (session?.duration ? parseInt(String(session.duration), 10) : 30) * 60
+  const [timeLeft, setTimeLeft] = useState(initialSeconds)
+
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const animFrameRef = useRef<number | null>(null)
 
   const isHost = session?.is_host || user?.role === 'admin' || user?.username === session?.host_name
+
+  // Reset timer whenever a new session opens
+  useEffect(() => {
+    if (open) {
+      const dur = (session?.duration ? parseInt(String(session.duration), 10) : 30) * 60
+      setTimeLeft(dur)
+    }
+  }, [open, session])
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!open) return
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          toast.info('The live prayer session has concluded. Thank you for praying together!')
+          onClose()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [open])
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m}:${s < 10 ? '0' : ''}${s}`
+  }
 
   // Micro-audio stream setup when host or unmuted speaker
   useEffect(() => {
@@ -177,12 +214,15 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
               <Radio size={20} className="text-red-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-red-500 text-white animate-pulse">
                   LIVE AUDIO
                 </span>
                 <span className="text-xs text-stone-400 flex items-center gap-1">
                   <Users size={13} className="text-emerald-400" /> {listenerCount} listening
+                </span>
+                <span className="text-xs font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20 flex items-center gap-1">
+                  <Clock size={12} /> {formatCountdown(timeLeft)} remaining
                 </span>
               </div>
               <DialogTitle className="font-display text-lg font-bold text-white mt-0.5 line-clamp-1">

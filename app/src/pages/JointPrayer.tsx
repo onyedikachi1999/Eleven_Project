@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Radio, Users, Lock, Globe, Plus, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles } from 'lucide-react'
+import { Radio, Users, Lock, Globe, Plus, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles, Clock } from 'lucide-react'
 import LiveAudioRoomModal from '@/components/LiveAudioRoomModal'
 
 const categoryIcons: Record<string, typeof Church> = {
@@ -313,7 +313,10 @@ export default function JointPrayer() {
                       <div className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full" style={{ background: s.is_live ? '#fee2e2' : 'var(--eleven-surface-elevated)', color: s.is_live ? '#dc2626' : 'var(--eleven-text-secondary)' }}>
                         {s.is_live ? '● LIVE NOW' : formatDate(s.scheduled_at)}
                       </div>
-                      <span className="text-xs text-stone-400">{formatTime(s.scheduled_at)}</span>
+                      <div className="flex items-center gap-2 text-xs text-stone-400">
+                        <span className="flex items-center gap-1 font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100"><Clock size={11} /> {s.duration || 30}m</span>
+                        <span>{formatTime(s.scheduled_at)}</span>
+                      </div>
                     </div>
                     <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{s.title}</h3>
                     <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{s.description}</p>
