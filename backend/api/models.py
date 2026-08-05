@@ -251,7 +251,8 @@ class ForumReply(models.Model):
 class CircleMessage(models.Model):
     circle = models.ForeignKey(PrayerCircle, on_delete=models.CASCADE, related_name='messages')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = models.TextField()
+    content = models.TextField(blank=True)
+    image = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

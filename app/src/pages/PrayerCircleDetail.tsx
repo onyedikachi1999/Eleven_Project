@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Users, Lock, Globe, MessageSquare, Send,
-  Shield, Calendar, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles
+  Shield, Calendar, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles, ImagePlus, X
 } from 'lucide-react'
 
 const categoryIcons: Record<string, typeof Church> = {
@@ -35,12 +35,17 @@ export default function PrayerCircleDetail() {
 
   const [circle, setCircle] = useState<any>(null)
   const [isMember, setIsMember] = useState(false)
+  const [memberRole, setMemberRole] = useState<string | null>(null)
   const [messages, setMessages] = useState<any[]>([])
   const [members, setMembers] = useState<any[]>([])
   const [messageText, setMessageText] = useState('')
   const [activeTab, setActiveTab] = useState<'discussion' | 'members'>('discussion')
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  const isModerator = memberRole === 'moderator'
 
   const loadCircleDetails = async () => {
     try {
@@ -48,7 +53,8 @@ export default function PrayerCircleDetail() {
       setCircle(data)
       if (isAuthenticated) {
         const membership = await circleApi.checkMembership(circleId)
-        setIsMember(membership)
+        setIsMember(membership.is_member)
+        setMemberRole(membership.role)
       }
     } catch (err: any) {
       toast.error('Failed to load circle details')
@@ -96,10 +102,12 @@ export default function PrayerCircleDetail() {
         await circleApi.leave(circleId)
         toast.success('Left circle')
         setIsMember(false)
+        setMemberRole(null)
       } else {
         await circleApi.join(circleId)
         toast.success('Joined circle successfully!')
         setIsMember(true)
+        setMemberRole('member')
       }
       loadCircleDetails()
       loadMembers()
@@ -109,13 +117,35 @@ export default function PrayerCircleDetail() {
     }
   }
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB')
+      return
+    }
+    setSelectedImage(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const clearImage = () => {
+    setSelectedImage(null)
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImagePreview(null)
+  }
+
   const handlePostMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!messageText.trim()) return
+    if (!messageText.trim() && !selectedImage) return
     setPosting(true)
     try {
-      await circleApi.postMessage(circleId, messageText.trim())
+      if (selectedImage) {
+        await circleApi.postMessageWithImage(circleId, messageText.trim(), selectedImage)
+      } else {
+        await circleApi.postMessage(circleId, messageText.trim())
+      }
       setMessageText('')
+      clearImage()
       loadMessages()
     } catch (err: any) {
       toast.error(err.message || 'Failed to send message')
@@ -213,13 +243,29 @@ export default function PrayerCircleDetail() {
                   id="msg-text"
                   value={messageText}
                   onChange={e => setMessageText(e.target.value)}
-                  placeholder="Share a prayer request, encouragement, or verse with the circle..."
+                  placeholder={isModerator ? 'Share a prayer request, encouragement, verse, or image...' : 'Share a prayer request, encouragement, or verse with the circle...'}
                   rows={2}
-                  required
                   className="text-xs resize-none"
                 />
-                <div className="flex justify-end">
-                  <Button type="submit" size="sm" className="rounded-lg text-xs" style={{ background: 'var(--eleven-accent)' }} disabled={posting}>
+                {imagePreview && (
+                  <div className="relative inline-block">
+                    <img src={imagePreview} alt="Preview" className="max-h-32 rounded-lg border" style={{ borderColor: 'var(--eleven-border)' }} />
+                    <button type="button" onClick={clearImage} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors">
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div>
+                    {isModerator && (
+                      <label className="inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer px-3 py-1.5 rounded-lg border hover:bg-stone-50 transition-colors" style={{ color: 'var(--eleven-text-secondary)', borderColor: 'var(--eleven-border)' }}>
+                        <ImagePlus size={14} />
+                        <span>Add Image</span>
+                        <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleImageSelect} className="hidden" />
+                      </label>
+                    )}
+                  </div>
+                  <Button type="submit" size="sm" className="rounded-lg text-xs text-white" style={{ background: 'var(--eleven-accent)' }} disabled={posting || (!messageText.trim() && !selectedImage)}>
                     <Send size={12} className="mr-1.5" /> {posting ? 'Posting...' : 'Post Message'}
                   </Button>
                 </div>
@@ -250,6 +296,9 @@ export default function PrayerCircleDetail() {
                             <span className="text-[10px]" style={{ color: 'var(--eleven-text-muted)' }}>&middot; {new Date(msg.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                           </div>
                           <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>{msg.content}</p>
+                          {msg.image && (
+                            <img src={msg.image} alt="Shared image" className="mt-2 max-w-full max-h-64 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity" style={{ borderColor: 'var(--eleven-border)' }} onClick={() => window.open(msg.image, '_blank')} />
+                          )}
                         </div>
                       </div>
                     ))}

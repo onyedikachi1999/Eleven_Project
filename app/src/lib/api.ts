@@ -87,6 +87,22 @@ export const circleApi = {
   create: (data: Record<string, unknown>) => fetchApi('/circles/', { method: 'POST', body: JSON.stringify(data) }),
   getMessages: (id: number) => fetchApi(`/circles/${id}/messages/`),
   postMessage: (id: number, content: string) => fetchApi(`/circles/${id}/messages/`, { method: 'POST', body: JSON.stringify({ content }) }),
+  postMessageWithImage: async (id: number, content: string, image: File) => {
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('image', image);
+    const res = await fetch(`${API_BASE}/circles/${id}/messages/`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  },
   getMembers: (id: number) => fetchApi(`/circles/${id}/members/`),
 };
 

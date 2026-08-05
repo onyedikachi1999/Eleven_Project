@@ -163,7 +163,7 @@ class CircleMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CircleMessage
-        fields = ['id', 'content', 'created_at', 'user_id', 'author_name', 'author_avatar']
+        fields = ['id', 'content', 'image', 'created_at', 'user_id', 'author_name', 'author_avatar']
 
     def get_author_name(self, obj):
         if obj.user:

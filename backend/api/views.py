@@ -1,3 +1,8 @@
+import os
+import uuid
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.db.models import Q, Count
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.utils import timezone
@@ -249,14 +254,20 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def check_membership(self, request, pk=None):
         if not request.user.is_authenticated:
-            return Response(False)
-        exists = CircleMember.objects.filter(circle_id=pk, user=request.user).exists()
-        return Response(exists)
+            return Response({'is_member': False, 'role': None})
+        try:
+            membership = CircleMember.objects.get(circle_id=pk, user=request.user)
+            return Response({'is_member': True, 'role': membership.role})
+        except CircleMember.DoesNotExist:
+            return Response({'is_member': False, 'role': None})
 
     @action(detail=True, methods=['get', 'post'])
     def messages(self, request, pk=None):
         circle = self.get_object()
-        is_member = request.user.is_authenticated and CircleMember.objects.filter(circle=circle, user=request.user).exists()
+        membership = None
+        if request.user.is_authenticated:
+            membership = CircleMember.objects.filter(circle=circle, user=request.user).first()
+        is_member = membership is not None
 
         if request.method == 'POST':
             if not request.user.is_authenticated:
@@ -265,12 +276,28 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
                 return Response({'detail': 'You must be a member of this circle to post messages'}, status=403)
             
             content = request.data.get('content', '').strip()
-            if not content:
-                return Response({'detail': 'Message content cannot be empty'}, status=400)
+            image_url = None
+
+            # Handle image upload (moderators only)
+            uploaded_file = request.FILES.get('image')
+            if uploaded_file:
+                if membership.role != 'moderator':
+                    return Response({'detail': 'Only moderators can post images'}, status=403)
+                ext = os.path.splitext(uploaded_file.name)[1].lower()
+                if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                    return Response({'detail': 'Unsupported image type. Only JPG, PNG, GIF, WEBP are allowed.'}, status=400)
+                if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
+                    return Response({'detail': 'Image must be under 5MB'}, status=400)
+                filename = f"{uuid.uuid4()}{ext}"
+                path = default_storage.save(os.path.join('circle_images', filename), ContentFile(uploaded_file.read()))
+                image_url = request.build_absolute_uri(settings.MEDIA_URL + path)
+
+            if not content and not image_url:
+                return Response({'detail': 'Message must have text or an image'}, status=400)
             
             from .models import CircleMessage
             from .serializers import CircleMessageSerializer
-            msg = CircleMessage.objects.create(circle=circle, user=request.user, content=content)
+            msg = CircleMessage.objects.create(circle=circle, user=request.user, content=content, image=image_url)
             return Response(CircleMessageSerializer(msg).data, status=status.HTTP_201_CREATED)
             
         else:
