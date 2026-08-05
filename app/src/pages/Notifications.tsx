@@ -17,7 +17,7 @@ interface NotificationItem {
 const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   {
     id: '1',
-    title: 'Welcome to ELEVEN',
+    title: 'Welcome to ElevenFaith',
     message: 'Welcome to our spiritual community fellowship space! We are so glad to have you here.',
     time: '1 hour ago',
     type: 'system',
@@ -25,7 +25,7 @@ const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   },
   {
     id: '2',
-    title: 'New Live Event on ELEVEN TV',
+    title: 'New Live Event on ElevenFaith TV',
     message: 'Watch premium live streams of vigils, prayers, and church services directly on our TV page.',
     time: '5 hours ago',
     type: 'tv',
@@ -117,7 +117,7 @@ export default function Notifications() {
               <Bell className="text-[#c4956a]" /> Notifications
             </h1>
             <p className="text-xs mt-1" style={{ color: 'var(--eleven-text-secondary)' }}>
-              Stay updated on fellowship activities, prayers, and ELEVEN TV streams.
+              Stay updated on fellowship activities, prayers, and ElevenFaith TV streams.
             </p>
           </div>
           {notifications.length > 0 && (

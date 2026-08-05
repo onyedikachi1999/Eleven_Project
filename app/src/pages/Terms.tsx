@@ -14,7 +14,7 @@ export default function Terms() {
             Terms of Service
           </h1>
           <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>
-            Please read these terms carefully before accessing or using the ELEVEN platform.
+            Please read these terms carefully before accessing or using the ElevenFaith platform.
           </p>
         </div>
       </div>
@@ -31,7 +31,7 @@ export default function Terms() {
                 <h3 className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>1. Acceptance of Terms</h3>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>
-                By creating an account or using the ELEVEN testimony and prayer platform, you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, you must not use or access the services.
+                By creating an account or using the ElevenFaith testimony and prayer platform, you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, you must not use or access the services.
               </p>
             </CardContent>
           </Card>
@@ -59,7 +59,7 @@ export default function Terms() {
                 <h3 className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>3. Content Standards & Ownership</h3>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>
-                You retain ownership of the content (testimonies, prayers, comments) that you upload. However, by uploading content, you grant ELEVEN a non-exclusive, royalty-free license to host, display, and distribute it on the platform. All shared content must comply with our Community Guidelines.
+                You retain ownership of the content (testimonies, prayers, comments) that you upload. However, by uploading content, you grant ElevenFaith a non-exclusive, royalty-free license to host, display, and distribute it on the platform. All shared content must comply with our Community Guidelines.
               </p>
             </CardContent>
           </Card>
@@ -73,7 +73,7 @@ export default function Terms() {
                 <h3 className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>4. Modifications to the Service</h3>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>
-                We reserve the right to modify or discontinue any part of the service with or without notice. We may update these Terms of Service occasionally, and your continued use of ELEVEN after changes are published constitutes agreement to the updated terms.
+                We reserve the right to modify or discontinue any part of the service with or without notice. We may update these Terms of Service occasionally, and your continued use of ElevenFaith after changes are published constitutes agreement to the updated terms.
               </p>
             </CardContent>
           </Card>

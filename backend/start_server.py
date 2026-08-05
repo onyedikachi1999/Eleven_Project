@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ELEVEN Django Backend Startup Script
+ElevenFaith Django Backend Startup Script
 Usage: python start_server.py
 """
 import subprocess
@@ -11,7 +11,7 @@ def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'eleven_project.settings')
     
     print("=" * 60)
-    print("  ELEVEN - Testimony. Prayer. Community.")
+    print("  ElevenFaith - Testimony. Prayer. Community.")
     print("  Django Backend Server")
     print("=" * 60)
     print()

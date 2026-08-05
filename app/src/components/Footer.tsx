@@ -6,7 +6,7 @@ const platformLinks = [
   { to: '/', label: 'Home' },
   { to: '/testimonies', label: 'Testimonies' },
   { to: '/prayer-room', label: 'Prayer Room' },
-  { to: '/tv', label: 'ELEVEN TV' },
+  { to: '/tv', label: 'ElevenFaith TV' },
   { to: '/community', label: 'Community' },
 ]
 
@@ -97,7 +97,7 @@ export default function Footer() {
           style={{ borderColor: '#333' }}
         >
           <p className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>
-            © 2025 ELEVEN™. All rights reserved.
+            © 2025 ElevenFaith™. All rights reserved.
           </p>
           <p className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>
             Made with faith and purpose.

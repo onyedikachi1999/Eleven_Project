@@ -20,7 +20,7 @@ function HeroSection() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full" style={{ background: 'radial-gradient(circle, var(--eleven-accent) 0%, transparent 70%)' }} />
       </div>
       <div className="relative z-10 max-w-2xl mx-auto">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--eleven-accent)' }}>Welcome to ELEVEN</p>
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--eleven-accent)' }}>Welcome to ElevenFaith</p>
         <h1 className="font-display text-4xl sm:text-5xl font-bold leading-tight mb-4" style={{ color: 'var(--eleven-text)' }}>Share Your Story.<br/>Join the Prayer.</h1>
         <p className="text-base sm:text-lg mb-8 max-w-lg mx-auto" style={{ color: 'var(--eleven-text-secondary)' }}>A global community where testimonies ignite faith and prayers create miracles.</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -401,7 +401,7 @@ function VideoSection() {
   return (
     <section className="py-16 px-4 sm:px-6 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h2 className="font-display text-2xl sm:text-3xl font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>ELEVEN TV</h2>
+        <h2 className="font-display text-2xl sm:text-3xl font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>ElevenFaith TV</h2>
         <p className="text-sm" style={{ color: 'var(--eleven-text-secondary)' }}>Watch powerful testimonies and live events.</p>
       </div>
       <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory">

@@ -22,7 +22,7 @@ export default function Login() {
         body: JSON.stringify({ credential: response.credential }),
       })
       if (res.ok) {
-        toast.success('Welcome to ELEVEN!')
+        toast.success('Welcome to ElevenFaith!')
         window.location.href = '/'
       } else {
         const err = await res.json()
@@ -66,7 +66,7 @@ export default function Login() {
     <div className="min-h-[80vh] flex items-stretch">
       <div className="hidden md:flex w-1/2 items-center justify-center" style={{ background: 'linear-gradient(135deg, #F5F0EB 0%, #E8D5C0 100%)' }}>
         <div className="text-center px-8">
-          <h1 className="font-display text-5xl font-bold mb-4" style={{ color: 'var(--eleven-text)' }}>ELEVEN&trade;</h1>
+          <h1 className="font-display text-5xl font-bold mb-4" style={{ color: 'var(--eleven-text)' }}>ElevenFaith&trade;</h1>
           <p className="font-display text-xl" style={{ color: 'var(--eleven-text-secondary)' }}>Where faith meets community.</p>
           <div className="mt-8 opacity-[0.03]"><svg width="200" height="200" viewBox="0 0 200 200"><defs><pattern id="cross" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M20 0v40M0 20h40" stroke="currentColor" strokeWidth="1" fill="none"/></pattern></defs><rect width="200" height="200" fill="url(#cross)"/></svg></div>
         </div>
@@ -117,7 +117,7 @@ export default function Login() {
             <p className="text-center text-xs" style={{ color: 'var(--eleven-text-muted)' }}>
               Admin: <span className="font-medium" style={{ color: 'var(--eleven-text-secondary)' }}>eleven_admin / eleven2025</span>
             </p>
-            <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t" style={{ borderColor: 'var(--eleven-border)' }} /></div><div className="relative flex justify-center text-xs"><span className="px-2" style={{ background: 'var(--eleven-bg)', color: 'var(--eleven-text-muted)' }}>New to ELEVEN?</span></div></div>
+            <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t" style={{ borderColor: 'var(--eleven-border)' }} /></div><div className="relative flex justify-center text-xs"><span className="px-2" style={{ background: 'var(--eleven-bg)', color: 'var(--eleven-text-muted)' }}>New to ElevenFaith?</span></div></div>
             <Link to="/register" className="w-full block">
               <Button type="button" variant="outline" className="w-full rounded-lg font-semibold h-10" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>
                 Create an Account

@@ -11,7 +11,7 @@ export default function About() {
             Our Purpose
           </span>
           <h1 className="font-display text-4xl sm:text-5xl font-bold mb-6" style={{ color: 'var(--eleven-text)' }}>
-            About ELEVEN&trade;
+            About ElevenFaith&trade;
           </h1>
           <p className="font-display text-lg sm:text-xl leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>
             "Share Your Story. Join The Prayer."
@@ -40,7 +40,7 @@ export default function About() {
               Our Mission
             </h2>
             <p className="text-sm sm:text-base leading-relaxed mb-4" style={{ color: 'var(--eleven-text-secondary)' }}>
-              In a digital age filled with noise and distraction, ELEVEN serves as a digital sanctuary. We are dedicated to creating a focused, faith-centric platform where believers can gather to uplift one another.
+              In a digital age filled with noise and distraction, ElevenFaith serves as a digital sanctuary. We are dedicated to creating a focused, faith-centric platform where believers can gather to uplift one another.
             </p>
             <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>
               Through shared testimonies of God's goodness and active intercessory prayer, we believe we can strengthen individual faith and cultivate a deeper sense of global spiritual unity.

@@ -108,7 +108,7 @@ export default function ElevenTV() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Play size={28} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} />
-              <h1 className="font-display text-3xl sm:text-4xl font-bold text-white">ELEVEN TV</h1>
+              <h1 className="font-display text-3xl sm:text-4xl font-bold text-white">ElevenFaith TV</h1>
             </div>
             <p className="text-sm sm:text-base" style={{ color: 'var(--eleven-text-muted)' }}>Watch testimonies, live broadcasts, and stream church activities.</p>
           </div>
@@ -294,7 +294,7 @@ export default function ElevenTV() {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-stone-500 leading-relaxed">
-              Only <strong className="text-[#8b6914]">Premium Watchers</strong> can host and broadcast live streams of events, vigils, or church services to ELEVEN TV.
+              Only <strong className="text-[#8b6914]">Premium Watchers</strong> can host and broadcast live streams of events, vigils, or church services to ElevenFaith TV.
             </p>
             <p className="text-xs text-stone-400 mt-2">
               Upgrade your subscription to unlock streaming permissions immediately.

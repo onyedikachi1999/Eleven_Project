@@ -16,7 +16,7 @@ class Command(BaseCommand):
             username='eleven_user',
             defaults={
                 'email': 'user@eleven.app',
-                'first_name': 'ELEVEN',
+                'first_name': 'ElevenFaith',
                 'last_name': 'User',
                 'role': 'user',
             }
@@ -29,7 +29,7 @@ class Command(BaseCommand):
             username='eleven_admin',
             defaults={
                 'email': 'admin@eleven.app',
-                'first_name': 'ELEVEN',
+                'first_name': 'ElevenFaith',
                 'last_name': 'Admin',
                 'role': 'admin',
             }

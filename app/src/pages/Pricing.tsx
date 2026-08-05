@@ -149,9 +149,9 @@ export default function Pricing() {
             name: user?.name || user?.username || 'User',
           },
           customizations: {
-            title: 'ELEVEN Subscription',
+            title: 'ElevenFaith Subscription',
             description: `Upgrade to ${planId.toUpperCase()} Plan`,
-            logo: 'https://eleven.com/logo.png',
+            logo: 'https://elevenfaith.com/logo.png',
           },
           callback: async (data: any) => {
             console.log('Payment response:', data)

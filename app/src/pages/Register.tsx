@@ -25,7 +25,7 @@ export default function Register() {
         body: JSON.stringify({ credential: response.credential }),
       })
       if (res.ok) {
-        toast('Welcome to ELEVEN!')
+        toast('Welcome to ElevenFaith!')
         window.location.href = '/'
       } else {
         const err = await res.json()
@@ -68,7 +68,7 @@ export default function Register() {
     setLoading(true)
     try {
       await authApi.register(formData)
-      toast('Welcome to ELEVEN!')
+      toast('Welcome to ElevenFaith!')
       window.location.href = '/'
     } catch (err: any) {
       toast.error(err.message || 'Registration failed. Try again.')
@@ -81,7 +81,7 @@ export default function Register() {
       {/* Decorative Sidebar */}
       <div className="hidden md:flex w-1/2 items-center justify-center" style={{ background: 'linear-gradient(135deg, #F5F0EB 0%, #E8D5C0 100%)' }}>
         <div className="text-center px-8">
-          <h1 className="font-display text-5xl font-bold mb-4" style={{ color: 'var(--eleven-text)' }}>ELEVEN&trade;</h1>
+          <h1 className="font-display text-5xl font-bold mb-4" style={{ color: 'var(--eleven-text)' }}>ElevenFaith&trade;</h1>
           <p className="font-display text-xl" style={{ color: 'var(--eleven-text-secondary)' }}>Share your story. Join the prayer.</p>
           <div className="mt-8 opacity-[0.03]">
             <svg width="200" height="200" viewBox="0 0 200 200">
