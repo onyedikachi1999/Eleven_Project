@@ -1,22 +1,19 @@
 import { Heart, Church, Flame, Users, BookOpen, HandHeart, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import ElevenFaithBanner from '@/components/ElevenFaithBanner'
 
 export default function About() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--eleven-bg)' }}>
       {/* Hero Header */}
-      <div className="py-20 px-4 text-center" style={{ background: 'linear-gradient(135deg, #F5F0EB 0%, #E8D5C0 100%)' }}>
-        <div className="max-w-3xl mx-auto">
-          <span className="text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full bg-white/60 mb-4 inline-block" style={{ color: 'var(--eleven-accent-dark)' }}>
+      <div className="relative">
+        <ElevenFaithBanner variant="header" />
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-6 pointer-events-none">
+          <span className="text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 mb-2 pointer-events-auto" style={{ color: 'var(--eleven-accent-dark)' }}>
             Our Purpose
           </span>
-          <h1 className="font-display text-4xl sm:text-5xl font-bold mb-6" style={{ color: 'var(--eleven-text)' }}>
-            About ElevenFaith&trade;
-          </h1>
-          <p className="font-display text-lg sm:text-xl leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>
-            "Share Your Story. Join The Prayer."
-            <br />
-            Connecting the global body of Christ through testimonies, continuous prayer, and spiritual community.
+          <p className="font-display text-base sm:text-lg text-center pointer-events-auto" style={{ color: '#6b7b8d' }}>
+            Connecting the global body of Christ through testimonies, prayer, and community.
           </p>
         </div>
       </div>

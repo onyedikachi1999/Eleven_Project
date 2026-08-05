@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { authApi } from '@/lib/api'
+import ElevenFaithBanner from '@/components/ElevenFaithBanner'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000') + '/api';
 
@@ -79,21 +80,8 @@ export default function Register() {
   return (
     <div className="min-h-[80vh] flex items-stretch">
       {/* Decorative Sidebar */}
-      <div className="hidden md:flex w-1/2 items-center justify-center" style={{ background: 'linear-gradient(135deg, #F5F0EB 0%, #E8D5C0 100%)' }}>
-        <div className="text-center px-8">
-          <h1 className="font-display text-5xl font-bold mb-4" style={{ color: 'var(--eleven-text)' }}>ElevenFaith&trade;</h1>
-          <p className="font-display text-xl" style={{ color: 'var(--eleven-text-secondary)' }}>Share your story. Join the prayer.</p>
-          <div className="mt-8 opacity-[0.03]">
-            <svg width="200" height="200" viewBox="0 0 200 200">
-              <defs>
-                <pattern id="cross" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M20 0v40M0 20h40" stroke="currentColor" strokeWidth="1" fill="none" />
-                </pattern>
-              </defs>
-              <rect width="200" height="200" fill="url(#cross)" />
-            </svg>
-          </div>
-        </div>
+      <div className="hidden md:flex w-1/2">
+        <ElevenFaithBanner variant="sidebar" />
       </div>
 
       {/* Register Form */}

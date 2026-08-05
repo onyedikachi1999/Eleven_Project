@@ -11,22 +11,17 @@ import {
   UserPlus, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Pause, Calendar, Megaphone
 } from 'lucide-react'
 import { TestimonyCard, TestimonyDetailModal, categoryIcons, categoryColors, timeAgo } from '@/components/TestimonyCardShared'
+import ElevenFaithBanner from '@/components/ElevenFaithBanner'
 
 // ── Hero Section ──
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden flex items-center justify-center text-center px-4" style={{ minHeight: 480, background: 'linear-gradient(135deg, var(--eleven-surface-elevated) 0%, var(--eleven-bg) 60%, var(--eleven-surface-elevated) 100%)' }}>
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full" style={{ background: 'radial-gradient(circle, var(--eleven-accent) 0%, transparent 70%)' }} />
-      </div>
-      <div className="relative z-10 max-w-2xl mx-auto">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--eleven-accent)' }}>Welcome to ElevenFaith</p>
-        <h1 className="font-display text-4xl sm:text-5xl font-bold leading-tight mb-4" style={{ color: 'var(--eleven-text)' }}>Share Your Story.<br/>Join the Prayer.</h1>
-        <p className="text-base sm:text-lg mb-8 max-w-lg mx-auto" style={{ color: 'var(--eleven-text-secondary)' }}>A global community where testimonies ignite faith and prayers create miracles.</p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link to="/testimonies"><Button size="lg" className="rounded-full px-6 font-semibold text-sm" style={{ background: 'var(--eleven-accent)' }}>Share Testimony</Button></Link>
-          <Link to="/prayer-room"><Button variant="outline" size="lg" className="rounded-full px-6 font-semibold text-sm" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Enter Prayer Room</Button></Link>
-        </div>
+    <section className="relative overflow-hidden" style={{ background: '#f8f9fa' }}>
+      <ElevenFaithBanner variant="hero" />
+      {/* CTA Buttons */}
+      <div className="relative z-10 flex flex-col sm:flex-row gap-3 justify-center pb-12 -mt-4 px-4">
+        <Link to="/testimonies"><Button size="lg" className="rounded-full px-6 font-semibold text-sm" style={{ background: 'var(--eleven-accent)' }}>Share Testimony</Button></Link>
+        <Link to="/prayer-room"><Button variant="outline" size="lg" className="rounded-full px-6 font-semibold text-sm" style={{ borderColor: 'var(--eleven-accent)', color: 'var(--eleven-accent)' }}>Enter Prayer Room</Button></Link>
       </div>
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce" style={{ color: 'var(--eleven-text-muted)' }}><ChevronDown size={24} /></div>
     </section>
