@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Link } from 'react-router'
+import LiveAudioRoomModal from '@/components/LiveAudioRoomModal'
 
 const channelTabs = ['all', 'live', 'healing', 'finance', 'family', 'career', 'deliverance', 'general']
 
@@ -29,6 +30,7 @@ export default function ElevenTV() {
   const [liveSession, setLiveSession] = useState<any>(null)
   const [selectedVideo, setSelectedVideo] = useState<any>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [activeAudioSession, setActiveAudioSession] = useState<any>(null)
 
   // Go Live states
   const [promoOpen, setPromoOpen] = useState(false)
@@ -184,9 +186,17 @@ export default function ElevenTV() {
                     <h2 className="font-display text-xl font-bold text-stone-900 leading-tight mb-2">{liveSession.title}</h2>
                     <p className="text-xs text-stone-500 leading-relaxed">{liveSession.description || 'No description provided.'}</p>
                   </div>
-                  <div className="pt-4 border-t border-stone-100">
-                    <p className="text-[10px] uppercase font-bold text-stone-400">Broadcaster</p>
-                    <p className="text-xs font-semibold text-stone-700 mt-0.5">{liveSession.host_name || 'Host'}</p>
+                  <div className="pt-4 border-t border-stone-100 flex flex-col gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-stone-400">Broadcaster</p>
+                      <p className="text-xs font-semibold text-stone-700 mt-0.5">{liveSession.host_name || 'Host'}</p>
+                    </div>
+                    <Button
+                      onClick={() => setActiveAudioSession(liveSession)}
+                      className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-9 flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <Radio size={14} className="animate-pulse" /> Join Live Audio Room
+                    </Button>
                   </div>
                 </div>
 
@@ -195,7 +205,7 @@ export default function ElevenTV() {
                   <Button 
                     variant="destructive"
                     onClick={() => handleEndStream(liveSession.id)}
-                    className="w-full rounded-xl mt-6 flex items-center justify-center gap-1.5 font-semibold text-xs h-9 cursor-pointer"
+                    className="w-full rounded-xl mt-4 flex items-center justify-center gap-1.5 font-semibold text-xs h-9 cursor-pointer"
                   >
                     <StopCircle size={15} /> End Broadcast
                   </Button>
@@ -390,6 +400,12 @@ export default function ElevenTV() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <LiveAudioRoomModal
+        open={!!activeAudioSession}
+        onClose={() => setActiveAudioSession(null)}
+        session={activeAudioSession}
+      />
     </div>
   )
 }

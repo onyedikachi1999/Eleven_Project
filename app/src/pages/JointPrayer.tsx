@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Radio, Users, Lock, Globe, Plus, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles } from 'lucide-react'
+import LiveAudioRoomModal from '@/components/LiveAudioRoomModal'
 
 const categoryIcons: Record<string, typeof Church> = {
   healing: HandHeart, finance: Briefcase, family: UserPlus,
@@ -219,6 +220,7 @@ export default function JointPrayer() {
   const [circles, setCircles] = useState<any[]>([])
   const [liveSession, setLiveSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [activeAudioSession, setActiveAudioSession] = useState<any>(null)
 
   const loadSchedules = () => {
     scheduleApi.upcoming().then(r => setSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
@@ -238,13 +240,14 @@ export default function JointPrayer() {
     Promise.all([p1, p2, p3]).finally(() => setLoading(false))
   }, [])
 
-  const handleJoinSession = (title: string) => {
+  const handleJoinSession = (sessionData: any | string) => {
     if (!isAuthenticated) {
       toast('Please sign in to join');
       navigate('/login');
       return;
     }
-    toast.success(`Joined live session: ${title}`);
+    const sessionObj = typeof sessionData === 'string' ? { title: sessionData } : sessionData
+    setActiveAudioSession(sessionObj)
   };
 
   const handleScheduleAction = (s: any) => {
@@ -254,7 +257,7 @@ export default function JointPrayer() {
       return;
     }
     if (s.is_live) {
-      toast.success(`Joined session: ${s.title}`);
+      setActiveAudioSession(s)
     } else {
       toast.success(`Reminder set for: ${s.title}`);
     }
@@ -355,6 +358,12 @@ export default function JointPrayer() {
           </div>
         </section>
       </div>
+
+      <LiveAudioRoomModal
+        open={!!activeAudioSession}
+        onClose={() => setActiveAudioSession(null)}
+        session={activeAudioSession}
+      />
     </div>
   )
 }
