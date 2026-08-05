@@ -1,0 +1,48 @@
+services:
+  # ─────────────────────────────────────────────
+  # Backend: Django REST API
+  # ─────────────────────────────────────────────
+  - type: web
+    name: eleven-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn eleven_project.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 60"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false   # You will paste your Supabase DATABASE_URL in the Render dashboard
+      - key: ALLOWED_HOSTS
+        sync: false   # Set to: eleven-backend.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false   # Set to: https://eleven-frontend.onrender.com
+      - key: FLUTTERWAVE_PUBLIC_KEY
+        sync: false
+      - key: FLUTTERWAVE_SECRET_KEY
+        sync: false
+      - key: FLUTTERWAVE_ENCRYPTION_KEY
+        sync: false
+      - key: FLUTTERWAVE_BASE_URL
+        value: https://api.flutterwave.com/v3
+
+  # ─────────────────────────────────────────────
+  # Frontend: React (Vite) Static Site
+  # ─────────────────────────────────────────────
+  - type: web
+    name: eleven-frontend
+    runtime: static
+    rootDir: app
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: dist/public
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false   # Set to: https://eleven-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

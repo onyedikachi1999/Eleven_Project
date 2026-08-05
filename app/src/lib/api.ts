@@ -1,5 +1,5 @@
-// Django REST API client
-const API_BASE = 'http://localhost:8000/api';
+// Django REST API client – falls back to localhost in development
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000') + '/api';
 
 async function fetchApi(path: string, options: RequestInit = {}) {
   const url = `${API_BASE}${path}`;
@@ -34,7 +34,7 @@ export const authApi = {
   uploadAvatar: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch('http://localhost:8000/api/users/upload/', {
+    const res = await fetch(`${API_BASE}/users/upload/`, {
       method: 'POST',
       credentials: 'include',
       body: formData,
