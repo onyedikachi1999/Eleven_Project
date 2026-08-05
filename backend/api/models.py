@@ -19,6 +19,11 @@ class User(AbstractUser):
     class Meta:
         db_table = 'users'
 
+    def save(self, *args, **kwargs):
+        if self.role == 'admin' or self.is_staff or self.is_superuser:
+            self.subscription_plan = 'premium'
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.username or self.email or f"User {self.id}"
 

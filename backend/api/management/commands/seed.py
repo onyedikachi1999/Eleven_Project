@@ -32,8 +32,11 @@ class Command(BaseCommand):
                 'first_name': 'ElevenFaith',
                 'last_name': 'Admin',
                 'role': 'admin',
+                'subscription_plan': 'premium',
             }
         )
+        admin.role = 'admin'
+        admin.subscription_plan = 'premium'
         admin.set_password('eleven2025')
         admin.save()
 
