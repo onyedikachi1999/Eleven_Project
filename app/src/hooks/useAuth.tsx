@@ -59,9 +59,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.reload();
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    window.location.reload();
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignore
+    } finally {
+      setUser(null);
+      window.location.reload();
+    }
   }, []);
 
   const ctxValue: AuthContextType = {
