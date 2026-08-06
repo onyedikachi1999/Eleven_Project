@@ -47,10 +47,13 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
 
   const [localAmenCount, setLocalAmenCount] = useState(t.amen_count)
   const [localHasReacted, setLocalHasReacted] = useState(t.has_reacted)
+  const [isSaved, setIsSaved] = useState(false)
 
   useEffect(() => {
     setLocalAmenCount(t.amen_count)
     setLocalHasReacted(t.has_reacted)
+    const saved = JSON.parse(localStorage.getItem('saved_testimonies') || '[]')
+    setIsSaved(saved.includes(t.id))
   }, [t.id, t.amen_count, t.has_reacted])
 
   const handleAmenClick = async (e: React.MouseEvent) => {
@@ -83,8 +86,47 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
     onSelect()
   }
 
-  const handleActionClick = (e: React.MouseEvent) => {
+  const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation()
+    const saved = JSON.parse(localStorage.getItem('saved_testimonies') || '[]')
+    let nextSaved = [...saved]
+    if (saved.includes(t.id)) {
+      nextSaved = nextSaved.filter((id: number) => id !== t.id)
+      setIsSaved(false)
+      toast.success('Removed from saved testimonies')
+    } else {
+      nextSaved.push(t.id)
+      setIsSaved(true)
+      toast.success('Testimony saved successfully!')
+    }
+    localStorage.setItem('saved_testimonies', JSON.stringify(nextSaved))
+  }
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const shareUrl = `${window.location.origin}/testimonies`
+    const shareData = {
+      title: t.title,
+      text: `Check out this testimony on ElevenFaith: "${t.title}"`,
+      url: shareUrl,
+    }
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData)
+        toast.success('Shared successfully!')
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          toast.error('Failed to share')
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`)
+        toast.success('Link copied to clipboard!')
+      } catch {
+        toast.error('Failed to copy link')
+      }
+    }
   }
 
   return (
@@ -107,7 +149,29 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
         <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: 'var(--eleven-border)' }}>
           <button onClick={handleAmenClick} className={`flex items-center gap-1 text-xs font-medium transition-all duration-300 ${localHasReacted ? 'text-red-500 scale-105 font-semibold' : 'text-stone-400 hover:text-red-500'}`}><Heart size={14} fill={localHasReacted ? 'currentColor' : 'none'} className={`transition-transform duration-300 ${localHasReacted ? 'scale-110 text-red-500' : ''}`} /> {localAmenCount} {localHasReacted ? 'Reacted' : 'Reaction'}</button>
           <button onClick={handleCommentClick} className="flex items-center gap-1 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {t.prayer_count}</button>
-          <span className="ml-auto flex items-center gap-3" onClick={handleActionClick}><Bookmark size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /><Share2 size={14} style={{ color: 'var(--eleven-text-muted)' }} className="cursor-pointer hover:text-foreground" /></span>
+          <span className="ml-auto flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              title={isSaved ? "Remove from bookmarks" : "Save to bookmarks"}
+              className="transition-transform duration-200 active:scale-95 text-stone-400 hover:text-foreground focus:outline-none"
+            >
+              <Bookmark
+                size={14}
+                fill={isSaved ? "var(--eleven-accent)" : "none"}
+                style={{ color: isSaved ? "var(--eleven-accent)" : "var(--eleven-text-muted)" }}
+              />
+            </button>
+            <button
+              onClick={handleShare}
+              title="Share testimony"
+              className="transition-transform duration-200 active:scale-95 text-stone-400 hover:text-foreground focus:outline-none"
+            >
+              <Share2
+                size={14}
+                style={{ color: "var(--eleven-text-muted)" }}
+              />
+            </button>
+          </span>
         </div>
       </div>
     </div>
@@ -130,6 +194,7 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
   const [amenCount, setAmenCount] = useState(t.amen_count)
   const [viewCount, setViewCount] = useState(t.view_count)
   const [hasReacted, setHasReacted] = useState(t.has_reacted)
+  const [isSaved, setIsSaved] = useState(false)
 
   const loadComments = () => {
     commentApi.list('testimony', t.id).then(r => {
@@ -141,6 +206,8 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
     setAmenCount(t.amen_count)
     setViewCount(t.view_count)
     setHasReacted(t.has_reacted)
+    const saved = JSON.parse(localStorage.getItem('saved_testimonies') || '[]')
+    setIsSaved(saved.includes(t.id))
   }, [t.id, t.amen_count, t.view_count, t.has_reacted])
 
   useEffect(() => {
@@ -179,6 +246,48 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
       setHasReacted(hasReacted)
       setAmenCount(amenCount)
       toast.error('Failed to update reaction')
+    }
+  }
+
+  const handleSave = () => {
+    const saved = JSON.parse(localStorage.getItem('saved_testimonies') || '[]')
+    let nextSaved = [...saved]
+    if (saved.includes(t.id)) {
+      nextSaved = nextSaved.filter((id: number) => id !== t.id)
+      setIsSaved(false)
+      toast.success('Removed from saved testimonies')
+    } else {
+      nextSaved.push(t.id)
+      setIsSaved(true)
+      toast.success('Testimony saved successfully!')
+    }
+    localStorage.setItem('saved_testimonies', JSON.stringify(nextSaved))
+    onUpdate()
+  }
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/testimonies`
+    const shareData = {
+      title: t.title,
+      text: `Check out this testimony on ElevenFaith: "${t.title}"`,
+      url: shareUrl,
+    }
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData)
+        toast.success('Shared successfully!')
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          toast.error('Failed to share')
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`)
+        toast.success('Link copied to clipboard!')
+      } catch {
+        toast.error('Failed to copy link')
+      }
     }
   }
 
@@ -246,7 +355,31 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
         <div className="flex items-center gap-4 py-3 border-t border-b" style={{ borderColor: 'var(--eleven-border)' }}>
           <button onClick={handleAmen} className={`flex items-center gap-1.5 text-xs font-medium transition-all duration-300 ${hasReacted ? 'text-red-500 scale-105 font-semibold' : 'text-stone-400 hover:text-red-500'}`}><Heart size={14} fill={hasReacted ? 'currentColor' : 'none'} className={`transition-transform duration-300 ${hasReacted ? 'scale-110 text-red-500' : ''}`} /> {amenCount} {hasReacted ? 'Reacted' : 'Reaction'}</button>
           <button onClick={() => document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {comments.length} Comments</button>
-          <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--eleven-text-muted)' }}>Viewed {viewCount} times</span>
+          <span className="flex items-center gap-1.5 text-xs mr-auto" style={{ color: 'var(--eleven-text-muted)' }}>Viewed {viewCount} times</span>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              title={isSaved ? "Remove from bookmarks" : "Save to bookmarks"}
+              className="transition-transform duration-200 active:scale-95 text-stone-400 hover:text-foreground focus:outline-none"
+            >
+              <Bookmark
+                size={14}
+                fill={isSaved ? "var(--eleven-accent)" : "none"}
+                style={{ color: isSaved ? "var(--eleven-accent)" : "var(--eleven-text-muted)" }}
+              />
+            </button>
+            <button
+              onClick={handleShare}
+              title="Share testimony"
+              className="transition-transform duration-200 active:scale-95 text-stone-400 hover:text-foreground focus:outline-none"
+            >
+              <Share2
+                size={14}
+                style={{ color: "var(--eleven-text-muted)" }}
+              />
+            </button>
+          </div>
         </div>
 
         <div className="mt-6 space-y-4">
