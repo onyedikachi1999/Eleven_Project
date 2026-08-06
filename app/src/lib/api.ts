@@ -12,6 +12,11 @@ async function fetchApi(path: string, options: RequestInit = {}) {
     headers.set('Content-Type', 'application/json');
   }
 
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    headers.set('Authorization', `Token ${token}`);
+  }
+
   if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
     headers.set('X-CSRFToken', csrfToken);
   }
@@ -34,10 +39,35 @@ async function fetchApi(path: string, options: RequestInit = {}) {
 // Auth
 export const authApi = {
   me: () => fetchApi('/auth/me/'),
-  login: (username: string, password: string) => fetchApi('/auth/login/', { method: 'POST', body: JSON.stringify({ username, password }) }),
-  register: (data: Record<string, unknown>) => fetchApi('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
-  logout: () => fetchApi('/auth/logout/', { method: 'POST' }),
+  login: async (username: string, password: string) => {
+    const res = await fetchApi('/auth/login/', { method: 'POST', body: JSON.stringify({ username, password }) });
+    if (res && res.token) {
+      localStorage.setItem('auth_token', res.token);
+    }
+    return res;
+  },
+  register: async (data: Record<string, unknown>) => {
+    const res = await fetchApi('/auth/register/', { method: 'POST', body: JSON.stringify(data) });
+    if (res && res.token) {
+      localStorage.setItem('auth_token', res.token);
+    }
+    return res;
+  },
+  logout: async () => {
+    try {
+      await fetchApi('/auth/logout/', { method: 'POST' });
+    } finally {
+      localStorage.removeItem('auth_token');
+    }
+  },
   upgrade: (plan: 'free' | 'regular' | 'premium') => fetchApi('/users/upgrade/', { method: 'POST', body: JSON.stringify({ plan }) }),
+  googleAuth: async (credential: string) => {
+    const res = await fetchApi('/auth/google/', { method: 'POST', body: JSON.stringify({ credential }) });
+    if (res && res.token) {
+      localStorage.setItem('auth_token', res.token);
+    }
+    return res;
+  },
   verifyPayment: (transactionId: string, plan: 'regular' | 'premium') => fetchApi('/users/verify-payment/', { method: 'POST', body: JSON.stringify({ transaction_id: transactionId, plan }) }),
   cancelSubscription: () => fetchApi('/users/cancel-subscription/', { method: 'POST' }),
   updateProfile: (data: Record<string, unknown>) => fetchApi('/users/update/', { method: 'PATCH', body: JSON.stringify(data) }),

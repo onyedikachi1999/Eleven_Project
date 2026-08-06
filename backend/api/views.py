@@ -507,7 +507,13 @@ def api_login(request):
     if user:
         django_login(request, user)
         clear_login_failures(request, username)
-        return Response({'detail': 'Logged in'})
+        from rest_framework.authtoken.models import Token
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            'detail': 'Logged in',
+            'token': token.key,
+            'user': UserSerializer(user).data
+        })
         
     record_login_failure(request, username)
     return Response({'detail': 'Invalid credentials'}, status=400)
@@ -579,15 +585,12 @@ def api_google_auth(request):
 
         # Log user in
         django_login(request, user)
+        from rest_framework.authtoken.models import Token
+        token, _ = Token.objects.get_or_create(user=user)
         return Response({
             'detail': 'Logged in successfully',
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-            }
+            'token': token.key,
+            'user': UserSerializer(user).data
         })
 
     except requests.exceptions.RequestException as e:
@@ -624,7 +627,12 @@ def api_register(request):
         )
         # Log user in immediately upon registration
         django_login(request, user)
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        from rest_framework.authtoken.models import Token
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'detail': str(e)}, status=400)
 
