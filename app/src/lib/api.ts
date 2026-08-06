@@ -175,9 +175,9 @@ export const scheduleApi = {
   get: (id: number | string) => fetchApi(`/schedules/${id}/`),
   create: (data: Record<string, unknown>) => fetchApi('/schedules/', { method: 'POST', body: JSON.stringify(data) }),
   delete: (id: number) => fetchApi(`/schedules/${id}/`, { method: 'DELETE' }),
-  joinRoom: (id: number | string) => fetchApi(`/schedules/${id}/join/`, { method: 'POST' }),
+  joinRoom: (id: number | string, peerId?: string) => fetchApi(`/schedules/${id}/join/`, { method: 'POST', body: JSON.stringify({ peer_id: peerId }) }),
   leaveRoom: (id: number | string) => fetchApi(`/schedules/${id}/leave/`, { method: 'POST' }),
-  sendHeartbeat: (id: number | string) => fetchApi(`/schedules/${id}/heartbeat/`, { method: 'POST' }),
+  sendHeartbeat: (id: number | string, peerId?: string) => fetchApi(`/schedules/${id}/heartbeat/`, { method: 'POST', body: JSON.stringify({ peer_id: peerId }) }),
   syncRoom: (id: number | string, lastMsgId?: string | number, lastReactId?: string | number) => 
     fetchApi(`/schedules/${id}/sync/?last_message_id=${lastMsgId || ''}&last_reaction_id=${lastReactId || ''}`),
   sendLiveMessage: (id: number | string, text: string) => 

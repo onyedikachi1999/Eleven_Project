@@ -413,7 +413,11 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Authentication required'}, status=401)
         session = self.get_object()
         from .models import LiveRoomParticipant
+        peer_id = request.data.get('peer_id')
         participant, created = LiveRoomParticipant.objects.get_or_create(session=session, user=request.user)
+        if peer_id:
+            participant.peer_id = peer_id
+            participant.save()
         session.participant_count = LiveRoomParticipant.objects.filter(session=session).count()
         session.save()
         return Response({'status': 'joined', 'is_co_moderator': participant.is_co_moderator})
@@ -426,7 +430,11 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         from .models import LiveRoomParticipant
         from django.utils import timezone
         
-        LiveRoomParticipant.objects.filter(session=session, user=request.user).update(last_seen=timezone.now())
+        peer_id = request.data.get('peer_id')
+        update_fields = {'last_seen': timezone.now()}
+        if peer_id:
+            update_fields['peer_id'] = peer_id
+        LiveRoomParticipant.objects.filter(session=session, user=request.user).update(**update_fields)
         
         threshold = timezone.now() - timezone.timedelta(seconds=10)
         inactive = LiveRoomParticipant.objects.filter(session=session, last_seen__lt=threshold)

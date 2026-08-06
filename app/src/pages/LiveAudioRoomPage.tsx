@@ -33,6 +33,7 @@ interface Participant {
   name: string
   avatar?: string
   isCoModerator: boolean
+  peer_id?: string
 }
 
 export default function LiveAudioRoomPage() {
@@ -63,6 +64,8 @@ export default function LiveAudioRoomPage() {
   const lastMsgIdRef = useRef<number>(0)
   const lastReactIdRef = useRef<number>(0)
   const isModeratorRef = useRef<boolean>(false)
+  const activeCallsRef = useRef<Record<string, any>>({})
+  const myPeerIdRef = useRef<string | undefined>(undefined)
 
   // Compute Moderator role
   const isHostSpeaker = Boolean(
@@ -130,12 +133,46 @@ export default function LiveAudioRoomPage() {
     if (!Peer) return
 
     // Clean any prior peers
-    if (peerRef.current) {
-      peerRef.current.destroy()
-    }
+    cleanupWebRTC()
 
+    const peer = new Peer()
+    peerRef.current = peer
+
+    peer.on('open', (peerId: string) => {
+      console.log('PeerJS initialized with ID: ' + peerId)
+      myPeerIdRef.current = peerId
+      
+      scheduleApi.joinRoom(id, peerId)
+        .then(res => {
+          if (res && res.is_co_moderator) {
+            setIsMuted(false)
+          }
+        })
+        .catch(() => {})
+    })
+
+    // Listeners and Speakers can both receive incoming media streams
+    peer.on('call', (call: any) => {
+      console.log('Answering incoming WebRTC call...')
+      call.answer(localStreamRef.current || undefined) // Answer without stream if we are just a listener
+      
+      call.on('stream', (remoteStream: any) => {
+        console.log('Received remote audio stream!')
+        if (audioElRef.current) {
+          audioElRef.current.srcObject = remoteStream
+          audioElRef.current.play().catch(e => {
+            console.warn('Playback blocked. Waiting for user interaction.', e)
+          })
+        }
+      })
+    })
+
+    peer.on('error', (err: any) => {
+      console.error('Peer error:', err)
+    })
+
+    // Acquire microphone if we are host speaker
     if (isHostSpeaker) {
-      // Moderator / Host Speaker Mode
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
           localStreamRef.current = stream
@@ -143,57 +180,15 @@ export default function LiveAudioRoomPage() {
           stream.getAudioTracks().forEach(track => {
             track.enabled = !isMuted
           })
-
-          const peer = new Peer(`elevenfaith-live-${id}-host`)
-          peerRef.current = peer
-
-          peer.on('open', () => {
-            console.log('Host WebRTC Peer listening on channel: ' + peer.id)
-          })
-
-          peer.on('call', (call: any) => {
-            console.log('Host answering call from listener...')
-            call.answer(stream) // Stream mic to listener
-          })
-
-          peer.on('error', (err: any) => {
-            console.error('Host peer error:', err)
-          })
         })
         .catch(err => {
           console.error('Mic acquisition failed:', err)
-          toast.error('Microphone access is required to host the live audio room.')
+          toast.error('Microphone access is required to speak.')
         })
-    } else {
-      // Listener Mode
-      const peer = new Peer()
-      peerRef.current = peer
+    }
 
-      peer.on('open', () => {
-        console.log('Listener WebRTC Peer opened with ID: ' + peer.id)
-        
-        // Call the host to request the audio stream
-        // Send a dummy empty MediaStream to trigger the stream response
-        const call = peer.call(`elevenfaith-live-${id}-host`, new MediaStream())
-        
-        call.on('stream', (remoteStream: any) => {
-          console.log('Received remote audio stream from host!')
-          if (audioElRef.current) {
-            audioElRef.current.srcObject = remoteStream
-            audioElRef.current.play().catch(e => {
-              console.warn('Playback block detected. Waiting for user interaction.', e)
-            })
-          }
-        })
-
-        call.on('error', (err: any) => {
-          console.warn('Connection to host audio failed. Host might not be speaking yet.', err)
-        })
-      })
-
-      peer.on('error', (err: any) => {
-        console.error('Listener peer error:', err)
-      })
+    return () => {
+      cleanupWebRTC()
     }
   }, [loading, session, peerLoaded, isHostSpeaker, id])
 
@@ -217,15 +212,6 @@ export default function LiveAudioRoomPage() {
   useEffect(() => {
     if (loading || !session || !id) return
 
-    // Call join API
-    scheduleApi.joinRoom(id)
-      .then(res => {
-        if (res && res.is_co_moderator) {
-          setIsMuted(false)
-        }
-      })
-      .catch(() => {})
-
     // Sync loop & Countdown Timer
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -242,7 +228,7 @@ export default function LiveAudioRoomPage() {
     // 2-second Sync loop
     const syncInterval = setInterval(() => {
       // 1. Send Heartbeat to keep active list correct
-      scheduleApi.sendHeartbeat(id)
+      scheduleApi.sendHeartbeat(id, myPeerIdRef.current)
         .then(res => {
           if (res && typeof res.participant_count === 'number') {
             setListenerCount(res.participant_count)
@@ -262,9 +248,29 @@ export default function LiveAudioRoomPage() {
               user_id: p.user_id,
               name: p.name,
               avatar: p.avatar,
-              isCoModerator: p.is_co_moderator
+              isCoModerator: p.is_co_moderator,
+              peer_id: p.peer_id
             }))
             setParticipants(mapped)
+
+            // If we are host/speaker, dial any new participant who has a peer_id
+            if (isHostSpeaker && peerRef.current && localStreamRef.current) {
+              mapped.forEach((p: Participant) => {
+                if (p.user_id !== user?.id && p.peer_id && !activeCallsRef.current[p.peer_id]) {
+                  console.log('Host dialing listener peer: ' + p.peer_id)
+                  const call = peerRef.current.call(p.peer_id, localStreamRef.current)
+                  if (call) {
+                    activeCallsRef.current[p.peer_id] = call
+                    call.on('close', () => {
+                      delete activeCallsRef.current[p.peer_id]
+                    })
+                    call.on('error', () => {
+                      delete activeCallsRef.current[p.peer_id]
+                    })
+                  }
+                }
+              })
+            }
 
             // Dynamic Co-Moderator promotion check for current user
             const currentParticipant = mapped.find(p => p.user_id === user?.id)
@@ -335,13 +341,19 @@ export default function LiveAudioRoomPage() {
       // Call leave endpoint on exit
       scheduleApi.leaveRoom(id).catch(() => {})
     }
-  }, [loading, session, id, user])
+  }, [loading, session, id, user, isHostSpeaker, isMuted])
 
   const cleanupWebRTC = () => {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(t => t.stop())
       localStreamRef.current = null
     }
+    // Clean up active calls
+    Object.values(activeCallsRef.current).forEach((call: any) => {
+      try { call.close() } catch {}
+    })
+    activeCallsRef.current = {}
+
     if (peerRef.current) {
       peerRef.current.destroy()
       peerRef.current = null

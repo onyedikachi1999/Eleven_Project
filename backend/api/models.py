@@ -310,6 +310,7 @@ class LiveRoomParticipant(models.Model):
     session = models.ForeignKey(ScheduledPrayer, on_delete=models.CASCADE, related_name='participants')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     is_co_moderator = models.BooleanField(default=False)
+    peer_id = models.CharField(max_length=100, blank=True, null=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(auto_now=True)
 

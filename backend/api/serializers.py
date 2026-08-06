@@ -241,7 +241,7 @@ class LiveRoomParticipantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LiveRoomParticipant
-        fields = ['id', 'user_id', 'name', 'avatar', 'is_co_moderator']
+        fields = ['id', 'user_id', 'name', 'avatar', 'is_co_moderator', 'peer_id']
 
     def get_name(self, obj):
         if obj.user:
