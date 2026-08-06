@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Radio, Users, Lock, Globe, Plus, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles, Clock } from 'lucide-react'
-import LiveAudioRoomModal from '@/components/LiveAudioRoomModal'
+
 
 const categoryIcons: Record<string, typeof Church> = {
   healing: HandHeart, finance: Briefcase, family: UserPlus,
@@ -220,7 +220,6 @@ export default function JointPrayer() {
   const [circles, setCircles] = useState<any[]>([])
   const [liveSession, setLiveSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeAudioSession, setActiveAudioSession] = useState<any>(null)
 
   const loadSchedules = () => {
     scheduleApi.upcoming().then(r => setSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
@@ -242,13 +241,13 @@ export default function JointPrayer() {
 
   const handleJoinSession = (sessionData: any) => {
     const sessionObj = typeof sessionData === 'string'
-      ? { title: sessionData, host_name: 'Pastor David', description: 'Live Prayer & Intercession Watch' }
+      ? { id: 's1', title: sessionData }
       : sessionData
-    setActiveAudioSession(sessionObj)
+    navigate(`/live-room/${sessionObj.id || 's1'}`)
   };
 
   const handleScheduleAction = (s: any) => {
-    setActiveAudioSession(s)
+    navigate(`/live-room/${s.id || 's1'}`)
   };
 
   const handleSetReminder = (e: React.MouseEvent, title: string) => {
@@ -375,11 +374,6 @@ export default function JointPrayer() {
         </section>
       </div>
 
-      <LiveAudioRoomModal
-        open={!!activeAudioSession}
-        onClose={() => setActiveAudioSession(null)}
-        session={activeAudioSession}
-      />
     </div>
   )
 }

@@ -142,6 +142,7 @@ export const circleApi = {
 export const scheduleApi = {
   upcoming: () => fetchApi('/schedules/upcoming/'),
   live: () => fetchApi('/schedules/live/'),
+  get: (id: number | string) => fetchApi(`/schedules/${id}/`),
   create: (data: Record<string, unknown>) => fetchApi('/schedules/', { method: 'POST', body: JSON.stringify(data) }),
   delete: (id: number) => fetchApi(`/schedules/${id}/`, { method: 'DELETE' }),
 };

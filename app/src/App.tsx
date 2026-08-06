@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router'
+import { Routes, Route, useLocation } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -21,14 +21,18 @@ import Terms from './pages/Terms'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import PageTransition from './components/PageTransition'
+import LiveAudioRoomPage from './pages/LiveAudioRoomPage'
 
 import { ThemeProvider } from './hooks/useTheme'
 
 export default function App() {
+  const location = useLocation()
+  const isLiveRoom = location.pathname.startsWith('/live-room/')
+
   return (
     <ThemeProvider>
       <div className="min-h-screen flex flex-col transition-colors duration-300" style={{ background: 'var(--eleven-bg)' }}>
-      <Navbar />
+      {!isLiveRoom && <Navbar />}
       <main className="flex-1">
         <PageTransition>
           <Routes>
@@ -49,11 +53,12 @@ export default function App() {
             <Route path="/guidelines" element={<Guidelines />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/live-room/:id" element={<LiveAudioRoomPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </PageTransition>
       </main>
-      <Footer />
+      {!isLiveRoom && <Footer />}
       <Toaster position="bottom-right" />
     </div>
     </ThemeProvider>
