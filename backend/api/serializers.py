@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     User, Testimony, TestimonyReaction, Prayer, PrayerResponse, Comment,
     PrayerCircle, CircleMember, ScheduledPrayer, ForumTopic, ForumReply,
-    CircleMessage, Slide
+    CircleMessage, Slide, LiveRoomMessage, LiveRoomParticipant, LiveRoomReaction
 )
 
 
@@ -214,3 +214,47 @@ class SlideSerializer(serializers.ModelSerializer):
     class Meta:
         model = Slide
         fields = '__all__'
+
+
+class LiveRoomMessageSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    user_avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LiveRoomMessage
+        fields = ['id', 'text', 'created_at', 'user_id', 'user_name', 'user_avatar']
+
+    def get_user_name(self, obj):
+        if obj.user:
+            return obj.user.get_full_name() or obj.user.username or 'User'
+        return None
+
+    def get_user_avatar(self, obj):
+        if obj.user:
+            return obj.user.avatar
+        return None
+
+
+class LiveRoomParticipantSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LiveRoomParticipant
+        fields = ['id', 'user_id', 'name', 'avatar', 'is_co_moderator']
+
+    def get_name(self, obj):
+        if obj.user:
+            return obj.user.get_full_name() or obj.user.username or 'User'
+        return None
+
+    def get_avatar(self, obj):
+        if obj.user:
+            return obj.user.avatar
+        return None
+
+
+class LiveRoomReactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LiveRoomReaction
+        fields = ['id', 'emoji', 'label', 'created_at']

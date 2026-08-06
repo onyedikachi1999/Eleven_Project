@@ -407,6 +407,138 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             return Response(ScheduledPrayerSerializer(session).data)
         return Response(None)
 
+    @action(detail=True, methods=['post'])
+    def join(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        session = self.get_object()
+        from .models import LiveRoomParticipant
+        participant, created = LiveRoomParticipant.objects.get_or_create(session=session, user=request.user)
+        session.participant_count = LiveRoomParticipant.objects.filter(session=session).count()
+        session.save()
+        return Response({'status': 'joined', 'is_co_moderator': participant.is_co_moderator})
+
+    @action(detail=True, methods=['post'])
+    def heartbeat(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        session = self.get_object()
+        from .models import LiveRoomParticipant
+        from django.utils import timezone
+        
+        LiveRoomParticipant.objects.filter(session=session, user=request.user).update(last_seen=timezone.now())
+        
+        threshold = timezone.now() - timezone.timedelta(seconds=10)
+        inactive = LiveRoomParticipant.objects.filter(session=session, last_seen__lt=threshold)
+        if inactive.exists():
+            inactive.delete()
+            
+        session.participant_count = LiveRoomParticipant.objects.filter(session=session).count()
+        session.save()
+        return Response({'status': 'active', 'participant_count': session.participant_count})
+
+    @action(detail=True, methods=['post'])
+    def leave(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        session = self.get_object()
+        from .models import LiveRoomParticipant
+        LiveRoomParticipant.objects.filter(session=session, user=request.user).delete()
+        session.participant_count = LiveRoomParticipant.objects.filter(session=session).count()
+        session.save()
+        return Response({'status': 'left'})
+
+    @action(detail=True, methods=['get'])
+    def sync(self, request, pk=None):
+        session = self.get_object()
+        from .models import LiveRoomMessage, LiveRoomParticipant, LiveRoomReaction
+        from .serializers import LiveRoomMessageSerializer, LiveRoomParticipantSerializer
+        from django.utils import timezone
+        
+        last_msg_id = request.query_params.get('last_message_id')
+        last_react_id = request.query_params.get('last_reaction_id')
+        
+        participants = LiveRoomParticipant.objects.filter(session=session).order_by('joined_at')
+        participants_data = LiveRoomParticipantSerializer(participants, many=True).data
+        
+        messages_qs = LiveRoomMessage.objects.filter(session=session)
+        if last_msg_id and last_msg_id.isdigit():
+            messages_qs = messages_qs.filter(id__gt=int(last_msg_id))
+        messages_data = LiveRoomMessageSerializer(messages_qs[:100], many=True).data
+        
+        recent_time = timezone.now() - timezone.timedelta(seconds=15)
+        reactions_qs = LiveRoomReaction.objects.filter(session=session, created_at__gte=recent_time)
+        if last_react_id and last_react_id.isdigit():
+            reactions_qs = reactions_qs.filter(id__gt=int(last_react_id))
+        
+        reactions_data = []
+        for r in reactions_qs[:50]:
+            reactions_data.append({
+                'id': r.id,
+                'emoji': r.emoji,
+                'label': r.label,
+                'user_id': r.user_id,
+                'x': hash(str(r.id)) % 70 + 15
+            })
+            
+        old_reactions = LiveRoomReaction.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(minutes=1))
+        old_reactions.delete()
+        
+        return Response({
+            'participants': participants_data,
+            'messages': messages_data,
+            'reactions': reactions_data
+        })
+
+    @action(detail=True, methods=['post'])
+    def send_message(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        session = self.get_object()
+        text = request.data.get('text', '').strip()
+        if not text:
+            return Response({'detail': 'Message text is required'}, status=400)
+            
+        from .models import LiveRoomMessage
+        from .serializers import LiveRoomMessageSerializer
+        msg = LiveRoomMessage.objects.create(session=session, user=request.user, text=text)
+        return Response(LiveRoomMessageSerializer(msg).data, status=201)
+
+    @action(detail=True, methods=['post'])
+    def send_reaction(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        session = self.get_object()
+        emoji = request.data.get('emoji', '').strip()
+        label = request.data.get('label', '').strip()
+        if not emoji or not label:
+            return Response({'detail': 'Emoji and label are required'}, status=400)
+            
+        from .models import LiveRoomReaction
+        reaction = LiveRoomReaction.objects.create(session=session, user=request.user, emoji=emoji, label=label)
+        return Response({'status': 'reaction_sent', 'id': reaction.id})
+
+    @action(detail=True, methods=['post'])
+    def toggle_co_moderator(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        session = self.get_object()
+        if request.user != session.host and request.user.role != 'admin':
+            return Response({'detail': 'Only the moderator can assign co-moderators'}, status=403)
+            
+        target_user_id = request.data.get('user_id')
+        if not target_user_id:
+            return Response({'detail': 'user_id is required'}, status=400)
+            
+        from .models import LiveRoomParticipant
+        participant = LiveRoomParticipant.objects.filter(session=session, user_id=target_user_id).first()
+        if not participant:
+            return Response({'detail': 'Participant not found in the room'}, status=404)
+            
+        participant.is_co_moderator = not participant.is_co_moderator
+        participant.save()
+        return Response({'status': 'co_moderator_toggled', 'is_co_moderator': participant.is_co_moderator})
+
 
 class ForumTopicViewSet(viewsets.ModelViewSet):
     queryset = ForumTopic.objects.all()

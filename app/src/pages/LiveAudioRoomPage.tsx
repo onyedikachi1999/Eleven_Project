@@ -29,22 +29,11 @@ interface ChatMessage {
 
 interface Participant {
   id: string
+  user_id: number
   name: string
   avatar?: string
   isCoModerator: boolean
 }
-
-const SAMPLE_SESSIONS = [
-  { id: 's1', title: 'Morning Grace Prayer Watch', description: 'Starting the day in worship, intercession, and personal prayer.', duration: 30, host_name: 'Pastor David' },
-  { id: 's2', title: 'Healing & Deliverance Fellowship', description: 'Gathering to pray for the sick, brokenhearted, and needy.', duration: 45, host_name: 'Sister Sarah' },
-  { id: 's3', title: 'Midnight Breakthrough Vigil', description: 'Late-night prayer watch standing in agreement for miracles.', duration: 60, host_name: 'Brother John' },
-]
-
-const DEFAULT_MESSAGES: ChatMessage[] = [
-  { id: '1', user: 'Pastor David', text: 'Welcome everyone! We are opening in prayer for healing today.', time: 'Just now' },
-  { id: '2', user: 'Sister Grace', text: 'Amen! Standing in faith with everyone here.', time: 'Just now', isAmen: true },
-  { id: '3', user: 'Brother John', text: 'Lord, touch every heart listening right now.', time: 'Just now' },
-]
 
 export default function LiveAudioRoomPage() {
   const { id } = useParams<{ id: string }>()
@@ -53,85 +42,191 @@ export default function LiveAudioRoomPage() {
   
   const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [isMuted, setIsMuted] = useState(false)
+  const [isMuted, setIsMuted] = useState(true) // Start muted by default
   const [isDeafened, setIsDeafened] = useState(false)
   const [reactions, setReactions] = useState<FloatingReaction[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_MESSAGES)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
-  const [listenerCount, setListenerCount] = useState(48)
-  const [audioLevel, setAudioLevel] = useState(60)
-  
-  const [participants, setParticipants] = useState<Participant[]>([
-    { id: 'p1', name: 'Sister Grace', isCoModerator: false },
-    { id: 'p2', name: 'Brother John', isCoModerator: false },
-    { id: 'p3', name: 'Sister Sarah', isCoModerator: false },
-    { id: 'p4', name: 'Brother David', isCoModerator: false },
-  ])
-  const [showExitWarning, setShowExitWarning] = useState(false)
+  const [listenerCount, setListenerCount] = useState(0)
+  const [audioLevel, setAudioLevel] = useState(12)
   const [activePanel, setActivePanel] = useState<'chat' | 'listeners'>('chat')
+  const [peerLoaded, setPeerLoaded] = useState(false)
   
-  // Timer countdown state
-  const [timeLeft, setTimeLeft] = useState(1800) // Default 30 min
+  const [participants, setParticipants] = useState<Participant[]>([])
+  const [showExitWarning, setShowExitWarning] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(1800)
 
-  const mediaStreamRef = useRef<MediaStream | null>(null)
+  // WebRTC & Sync Refs
+  const peerRef = useRef<any>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
+  const audioElRef = useRef<HTMLAudioElement | null>(null)
+  const lastMsgIdRef = useRef<number>(0)
+  const lastReactIdRef = useRef<number>(0)
+  const isModeratorRef = useRef<boolean>(false)
 
-  const isModerator = Boolean(session?.is_host || user?.role === 'admin' || user?.username === session?.host_name)
-  const hasCoModerator = participants.some(p => p.isCoModerator)
+  // Compute Moderator role
+  const isHostSpeaker = Boolean(
+    session?.is_host || 
+    user?.role === 'admin' || 
+    user?.username === session?.host_name ||
+    participants.find(p => p.user_id === user?.id)?.isCoModerator
+  )
+  isModeratorRef.current = isHostSpeaker
 
-  // Fetch session details on load
+  // 1. Dynamic script loader for PeerJS
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js'
+    script.async = true
+    script.onload = () => {
+      setPeerLoaded(true)
+    }
+    script.onerror = () => {
+      toast.error('Failed to load real-time WebRTC audio library.')
+    }
+    document.body.appendChild(script)
+
+    // Hidden audio element for WebRTC playback
+    const audioEl = document.createElement('audio')
+    audioEl.style.display = 'none'
+    document.body.appendChild(audioEl)
+    audioElRef.current = audioEl
+
+    return () => {
+      document.body.removeChild(script)
+      document.body.removeChild(audioEl)
+      cleanupWebRTC()
+    }
+  }, [])
+
+  // 2. Fetch session details on load
   useEffect(() => {
     if (!id) return
     setLoading(true)
 
-    // Check if it's a sample session
-    const sample = SAMPLE_SESSIONS.find(s => s.id === id)
-    if (sample) {
-      setSession(sample)
-      setTimeLeft(sample.duration * 60)
-      setLoading(false)
-      // Mute state setup
-      if (user?.role === 'admin' || user?.username === sample.host_name) {
-        setIsMuted(false)
-      } else {
-        setIsMuted(true)
-      }
-    } else {
-      // Fetch from API
-      scheduleApi.get(id)
-        .then(data => {
-          setSession(data)
-          setTimeLeft((data.duration || 30) * 60)
-          if (user?.role === 'admin' || user?.id === data.host_id) {
-            setIsMuted(false)
-          } else {
-            setIsMuted(true)
-          }
-        })
-        .catch(() => {
-          toast.error('Failed to load live session')
-          navigate('/joint-prayer')
-        })
-        .finally(() => {
-          setLoading(false)
-        })
-    }
+    scheduleApi.get(id)
+      .then(data => {
+        setSession(data)
+        setTimeLeft((data.duration || 30) * 60)
+        // If owner/host, enable speaking
+        if (user?.role === 'admin' || user?.id === data.host_id) {
+          setIsMuted(false)
+        }
+      })
+      .catch(() => {
+        toast.error('Failed to connect to live session')
+        navigate('/joint-prayer')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [id, user, navigate])
 
-  // Start micro audio stream if moderator and not muted
+  // 3. Initialize PeerJS WebRTC Connection
   useEffect(() => {
-    if (loading || !session) return
+    if (loading || !session || !peerLoaded || !id) return
 
-    if (!isMuted && isModerator) {
-      startAudioStream()
-    } else {
-      stopAudioStream()
+    const Peer = (window as any).Peer
+    if (!Peer) return
+
+    // Clean any prior peers
+    if (peerRef.current) {
+      peerRef.current.destroy()
     }
-  }, [isMuted, isModerator, loading, session])
 
-  // Countdown timer & listener flux effect
+    if (isHostSpeaker) {
+      // Moderator / Host Speaker Mode
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          localStreamRef.current = stream
+          // Mute tracks initially if muted
+          stream.getAudioTracks().forEach(track => {
+            track.enabled = !isMuted
+          })
+
+          const peer = new Peer(`elevenfaith-live-${id}-host`)
+          peerRef.current = peer
+
+          peer.on('open', () => {
+            console.log('Host WebRTC Peer listening on channel: ' + peer.id)
+          })
+
+          peer.on('call', (call: any) => {
+            console.log('Host answering call from listener...')
+            call.answer(stream) // Stream mic to listener
+          })
+
+          peer.on('error', (err: any) => {
+            console.error('Host peer error:', err)
+          })
+        })
+        .catch(err => {
+          console.error('Mic acquisition failed:', err)
+          toast.error('Microphone access is required to host the live audio room.')
+        })
+    } else {
+      // Listener Mode
+      const peer = new Peer()
+      peerRef.current = peer
+
+      peer.on('open', () => {
+        console.log('Listener WebRTC Peer opened with ID: ' + peer.id)
+        
+        // Call the host to request the audio stream
+        // Send a dummy empty MediaStream to trigger the stream response
+        const call = peer.call(`elevenfaith-live-${id}-host`, new MediaStream())
+        
+        call.on('stream', (remoteStream: any) => {
+          console.log('Received remote audio stream from host!')
+          if (audioElRef.current) {
+            audioElRef.current.srcObject = remoteStream
+            audioElRef.current.play().catch(e => {
+              console.warn('Playback block detected. Waiting for user interaction.', e)
+            })
+          }
+        })
+
+        call.on('error', (err: any) => {
+          console.warn('Connection to host audio failed. Host might not be speaking yet.', err)
+        })
+      })
+
+      peer.on('error', (err: any) => {
+        console.error('Listener peer error:', err)
+      })
+    }
+  }, [loading, session, peerLoaded, isHostSpeaker, id])
+
+  // 4. Update WebRTC Microphone track status when isMuted changes
   useEffect(() => {
-    if (loading || !session) return
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !isMuted
+      })
+    }
+  }, [isMuted])
 
+  // 5. Update remote audio volume based on Deafened state
+  useEffect(() => {
+    if (audioElRef.current) {
+      audioElRef.current.volume = isDeafened ? 0 : 1
+    }
+  }, [isDeafened])
+
+  // 6. Join room, start Polling (Heartbeat & Sync) Loop
+  useEffect(() => {
+    if (loading || !session || !id) return
+
+    // Call join API
+    scheduleApi.joinRoom(id)
+      .then(res => {
+        if (res && res.is_co_moderator) {
+          setIsMuted(false)
+        }
+      })
+      .catch(() => {})
+
+    // Sync loop & Countdown Timer
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -144,12 +239,89 @@ export default function LiveAudioRoomPage() {
       })
     }, 1000)
 
-    const countInterval = setInterval(() => {
-      setListenerCount(prev => prev + Math.floor(Math.random() * 3) - 1)
-    }, 5000)
+    // 2-second Sync loop
+    const syncInterval = setInterval(() => {
+      // 1. Send Heartbeat to keep active list correct
+      scheduleApi.sendHeartbeat(id)
+        .then(res => {
+          if (res && typeof res.participant_count === 'number') {
+            setListenerCount(res.participant_count)
+          }
+        })
+        .catch(() => {})
 
-    const audioInterval = setInterval(() => {
-      if (isModerator && !isMuted) {
+      // 2. Synchronize Chat, Participants, and Reactions
+      scheduleApi.syncRoom(id, lastMsgIdRef.current, lastReactIdRef.current)
+        .then(data => {
+          if (!data) return
+
+          // Sync Participants
+          if (Array.isArray(data.participants)) {
+            const mapped: Participant[] = data.participants.map((p: any) => ({
+              id: p.id.toString(),
+              user_id: p.user_id,
+              name: p.name,
+              avatar: p.avatar,
+              isCoModerator: p.is_co_moderator
+            }))
+            setParticipants(mapped)
+
+            // Dynamic Co-Moderator promotion check for current user
+            const currentParticipant = mapped.find(p => p.user_id === user?.id)
+            if (currentParticipant && currentParticipant.isCoModerator && isMuted) {
+              toast.success('You have been promoted to Co-Host. You can now unmute and speak!')
+            }
+          }
+
+          // Sync New Chat Messages
+          if (Array.isArray(data.messages) && data.messages.length > 0) {
+            const newMsgs: ChatMessage[] = data.messages.map((m: any) => ({
+              id: m.id.toString(),
+              user: m.user_name,
+              text: m.text,
+              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isAmen: m.text.toLowerCase().includes('amen')
+            }))
+            setMessages(prev => {
+              const ids = new Set(prev.map(p => p.id))
+              const filteredNew = newMsgs.filter(m => !ids.has(m.id))
+              return [...prev, ...filteredNew]
+            })
+            // Update last read message ID
+            const maxId = Math.max(...data.messages.map((m: any) => m.id))
+            if (maxId > lastMsgIdRef.current) {
+              lastMsgIdRef.current = maxId
+            }
+          }
+
+          // Sync New Reactions
+          if (Array.isArray(data.reactions) && data.reactions.length > 0) {
+            const newReacts: FloatingReaction[] = data.reactions.map((r: any) => ({
+              id: r.id,
+              emoji: r.emoji,
+              label: r.label,
+              x: r.x
+            }))
+            // Add new reactions to display float-up animation
+            setReactions(prev => [...prev, ...newReacts])
+            // Remove them after animation completes
+            setTimeout(() => {
+              setReactions(prev => prev.filter(r => !newReacts.map(nr => nr.id).includes(r.id)))
+            }, 2200)
+
+            // Update last read reaction ID
+            const maxReactId = Math.max(...data.reactions.map((r: any) => r.id))
+            if (maxReactId > lastReactIdRef.current) {
+              lastReactIdRef.current = maxReactId
+            }
+          }
+        })
+        .catch(() => {})
+    }, 2000)
+
+    // Audio Visualizer simulator loop
+    const visualizerInterval = setInterval(() => {
+      if (isHostSpeaker && !isMuted) {
         setAudioLevel(Math.floor(Math.random() * 55) + 35)
       } else {
         setAudioLevel(12)
@@ -158,11 +330,23 @@ export default function LiveAudioRoomPage() {
 
     return () => {
       clearInterval(timer)
-      clearInterval(countInterval)
-      clearInterval(audioInterval)
-      stopAudioStream()
+      clearInterval(syncInterval)
+      clearInterval(visualizerInterval)
+      // Call leave endpoint on exit
+      scheduleApi.leaveRoom(id).catch(() => {})
     }
-  }, [loading, session, isMuted, isModerator])
+  }, [loading, session, id, user])
+
+  const cleanupWebRTC = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop())
+      localStreamRef.current = null
+    }
+    if (peerRef.current) {
+      peerRef.current.destroy()
+      peerRef.current = null
+    }
+  }
 
   const formatCountdown = (secs: number) => {
     const m = Math.floor(secs / 60)
@@ -170,74 +354,80 @@ export default function LiveAudioRoomPage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`
   }
 
-  const startAudioStream = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaStreamRef.current = stream
-    } catch {
-      // Fallback
-    }
-  }
-
-  const stopAudioStream = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop())
-      mediaStreamRef.current = null
-    }
-  }
-
   const toggleMic = () => {
-    if (!isModerator) {
-      toast.info('Only the session moderator can speak. You are in listen-only mode.')
+    if (!isHostSpeaker) {
+      toast.info('Only the session moderator or appointed co-hosts can speak.')
       return
     }
     setIsMuted(!isMuted)
   }
 
-  const toggleCoModerator = (id: string) => {
-    setParticipants(prev =>
-      prev.map(p => (p.id === id ? { ...p, isCoModerator: !p.isCoModerator } : p))
-    )
-    const p = participants.find(part => part.id === id)
-    if (p) {
-      toast.success(
-        p.isCoModerator
-          ? `${p.name} is no longer Co-Host`
-          : `${p.name} has been appointed Co-Host`
-      )
-    }
+  const toggleCoModerator = (userId: number) => {
+    if (!id) return
+    scheduleApi.toggleCoModerator(id, userId)
+      .then(res => {
+        if (res && res.status === 'co_moderator_toggled') {
+          setParticipants(prev =>
+            prev.map(p => p.user_id === userId ? { ...p, isCoModerator: res.is_co_moderator } : p)
+          )
+          toast.success(res.is_co_moderator ? 'Promoted user to Co-Host' : 'Revoked Co-Host status')
+        }
+      })
+      .catch(() => {
+        toast.error('Failed to change moderator status')
+      })
   }
 
   const sendReaction = (emoji: string, label: string) => {
-    const newReaction: FloatingReaction = {
-      id: Date.now() + Math.random(),
-      emoji,
-      label,
-      x: Math.floor(Math.random() * 70) + 15,
-    }
-    setReactions(prev => [...prev, newReaction])
-
-    setTimeout(() => {
-      setReactions(prev => prev.filter(r => r.id !== newReaction.id))
-    }, 2200)
+    if (!id) return
+    // Broadcast reaction to server
+    scheduleApi.sendLiveReaction(id, emoji, label)
+      .then(res => {
+        // Optimistic local add
+        const newReaction: FloatingReaction = {
+          id: res.id || (Date.now() + Math.random()),
+          emoji,
+          label,
+          x: Math.floor(Math.random() * 70) + 15,
+        }
+        setReactions(prev => [...prev, newReaction])
+        setTimeout(() => {
+          setReactions(prev => prev.filter(r => r.id !== newReaction.id))
+        }, 2200)
+      })
+      .catch(() => {})
   }
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!chatInput.trim()) return
+    if (!chatInput.trim() || !id) return
 
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      user: user?.first_name ? `${user.first_name} ${user.last_name || ''}` : (user?.username || 'Believer'),
-      text: chatInput.trim(),
-      time: 'Just now',
-    }
-    setMessages(prev => [...prev, newMsg])
+    const text = chatInput.trim()
     setChatInput('')
+
+    // Send message to server
+    scheduleApi.sendLiveMessage(id, text)
+      .then(m => {
+        // Optimistic local add
+        const newMsg: ChatMessage = {
+          id: m.id.toString(),
+          user: m.user_name,
+          text: m.text,
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isAmen: m.text.toLowerCase().includes('amen')
+        }
+        setMessages(prev => [...prev, newMsg])
+        if (m.id > lastMsgIdRef.current) {
+          lastMsgIdRef.current = m.id
+        }
+      })
+      .catch(() => {
+        toast.error('Failed to send message')
+      })
   }
 
   const handleLeaveClick = () => {
-    if (isModerator) {
+    if (isHostSpeaker && user?.id === session?.host_id) {
       setShowExitWarning(true)
     } else {
       navigate('/joint-prayer')
@@ -412,12 +602,16 @@ export default function LiveAudioRoomPage() {
               Live Chat
             </div>
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-              {messages.map(m => (
-                <div key={m.id} className="leading-relaxed text-left">
-                  <span className="font-semibold text-emerald-400 mr-1.5">{m.user}:</span>
-                  <span className={m.isAmen ? 'text-amber-300 font-medium' : 'text-stone-200'}>{m.text}</span>
-                </div>
-              ))}
+              {messages.length > 0 ? (
+                messages.map(m => (
+                  <div key={m.id} className="leading-relaxed text-left">
+                    <span className="font-semibold text-emerald-400 mr-1.5">{m.user}:</span>
+                    <span className={m.isAmen ? 'text-amber-300 font-medium' : 'text-stone-200'}>{m.text}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-stone-500 text-center py-6">No chat messages yet. Write a prayer watch word!</p>
+              )}
             </div>
             <form onSubmit={handleSendMessage} className="flex gap-2 mt-2 pt-2 border-t border-white/10">
               <Input
@@ -441,36 +635,40 @@ export default function LiveAudioRoomPage() {
               Active Listeners ({participants.length})
             </div>
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-              {participants.map(p => (
-                <div key={p.id} className="flex items-center justify-between py-0.5">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-5 h-5 border border-white/10">
-                      <AvatarFallback className="bg-stone-800 text-stone-300 font-bold text-[8px] flex items-center justify-center">
-                        {p.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-stone-200 font-medium">{p.name}</span>
-                    {p.isCoModerator && (
-                      <span className="inline-flex items-center gap-0.5 px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded text-[8px] border border-amber-500/30">
-                        <Shield size={8} /> Co-Host
-                      </span>
+              {participants.length > 0 ? (
+                participants.map(p => (
+                  <div key={p.id} className="flex items-center justify-between py-0.5">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-5 h-5 border border-white/10">
+                        <AvatarFallback className="bg-stone-800 text-stone-300 font-bold text-[8px] flex items-center justify-center">
+                          {p.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-stone-200 font-medium">{p.name}</span>
+                      {p.isCoModerator && (
+                        <span className="inline-flex items-center gap-0.5 px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded text-[8px] border border-amber-500/30">
+                          <Shield size={8} /> Co-Host
+                        </span>
+                      )}
+                    </div>
+                    {isHostSpeaker && p.user_id !== session?.host_id && (
+                      <button
+                        type="button"
+                        onClick={() => toggleCoModerator(p.user_id)}
+                        className={`h-5 px-1.5 text-[9px] font-semibold rounded-md transition-colors cursor-pointer border ${
+                          p.isCoModerator
+                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border-red-500/30'
+                            : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border-emerald-500/30'
+                        }`}
+                      >
+                        {p.isCoModerator ? 'Revoke Co-Host' : 'Appoint Co-Host'}
+                      </button>
                     )}
                   </div>
-                  {isModerator && (
-                    <button
-                      type="button"
-                      onClick={() => toggleCoModerator(p.id)}
-                      className={`h-5 px-1.5 text-[9px] font-semibold rounded-md transition-colors cursor-pointer border ${
-                        p.isCoModerator
-                          ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border-red-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border-emerald-500/30'
-                      }`}
-                    >
-                      {p.isCoModerator ? 'Revoke Co-Host' : 'Appoint Co-Host'}
-                    </button>
-                  )}
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-stone-500 text-center py-6">Connecting participants...</p>
+              )}
             </div>
           </div>
         </div>
@@ -479,7 +677,7 @@ export default function LiveAudioRoomPage() {
       {/* ── Bottom Controls Bar ── */}
       <div className="p-4 bg-[#161c27] border-t border-white/10 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          {isModerator ? (
+          {isHostSpeaker ? (
             <Button
               onClick={toggleMic}
               variant="outline"
@@ -522,12 +720,12 @@ export default function LiveAudioRoomPage() {
         <DialogContent className="sm:max-w-md bg-[#161c27] border border-white/10 text-white p-5 rounded-2xl animate-none">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
-              <Shield size={20} className={hasCoModerator ? "text-amber-400" : "text-red-400"} />
-              {hasCoModerator ? "Leave Live Session?" : "End Live Session for Everyone?"}
+              <Shield size={20} className={participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? "text-amber-400" : "text-red-400"} />
+              {participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? "Leave Live Session?" : "End Live Session for Everyone?"}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-stone-300 space-y-2 text-left">
-            {hasCoModerator ? (
+            {participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? (
               <p>
                 You have appointed a co-moderator. If you leave, the live prayer session will continue running under their leadership.
               </p>
@@ -556,9 +754,9 @@ export default function LiveAudioRoomPage() {
                 setShowExitWarning(false)
                 navigate('/joint-prayer')
               }}
-              className={hasCoModerator ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-red-600 hover:bg-red-500 text-white"}
+              className={participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-red-600 hover:bg-red-500 text-white"}
             >
-              {hasCoModerator ? "Leave Room" : "End Session & Exit"}
+              {participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? "Leave Room" : "End Session & Exit"}
             </Button>
           </div>
         </DialogContent>

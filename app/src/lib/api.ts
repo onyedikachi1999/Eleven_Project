@@ -175,6 +175,17 @@ export const scheduleApi = {
   get: (id: number | string) => fetchApi(`/schedules/${id}/`),
   create: (data: Record<string, unknown>) => fetchApi('/schedules/', { method: 'POST', body: JSON.stringify(data) }),
   delete: (id: number) => fetchApi(`/schedules/${id}/`, { method: 'DELETE' }),
+  joinRoom: (id: number | string) => fetchApi(`/schedules/${id}/join/`, { method: 'POST' }),
+  leaveRoom: (id: number | string) => fetchApi(`/schedules/${id}/leave/`, { method: 'POST' }),
+  sendHeartbeat: (id: number | string) => fetchApi(`/schedules/${id}/heartbeat/`, { method: 'POST' }),
+  syncRoom: (id: number | string, lastMsgId?: string | number, lastReactId?: string | number) => 
+    fetchApi(`/schedules/${id}/sync/?last_message_id=${lastMsgId || ''}&last_reaction_id=${lastReactId || ''}`),
+  sendLiveMessage: (id: number | string, text: string) => 
+    fetchApi(`/schedules/${id}/send_message/`, { method: 'POST', body: JSON.stringify({ text }) }),
+  sendLiveReaction: (id: number | string, emoji: string, label: string) => 
+    fetchApi(`/schedules/${id}/send_reaction/`, { method: 'POST', body: JSON.stringify({ emoji, label }) }),
+  toggleCoModerator: (id: number | string, userId: number | string) => 
+    fetchApi(`/schedules/${id}/toggle_co_moderator/`, { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
 };
 
 // Forum

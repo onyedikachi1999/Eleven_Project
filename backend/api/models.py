@@ -293,3 +293,38 @@ class Slide(models.Model):
     class Meta:
         db_table = 'slides'
         ordering = ['order', '-created_at']
+
+
+class LiveRoomMessage(models.Model):
+    session = models.ForeignKey(ScheduledPrayer, on_delete=models.CASCADE, related_name='chat_messages')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'live_room_messages'
+        ordering = ['created_at']
+
+
+class LiveRoomParticipant(models.Model):
+    session = models.ForeignKey(ScheduledPrayer, on_delete=models.CASCADE, related_name='participants')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    is_co_moderator = models.BooleanField(default=False)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'live_room_participants'
+        unique_together = ['session', 'user']
+
+
+class LiveRoomReaction(models.Model):
+    session = models.ForeignKey(ScheduledPrayer, on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    emoji = models.CharField(max_length=10)
+    label = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'live_room_reactions'
+        ordering = ['created_at']
