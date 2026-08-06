@@ -243,8 +243,12 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
   if (!session) return null
 
   return (
-    <Dialog open={open} onOpenChange={val => { if (!val) onClose() }}>
-      <DialogContent className="sm:max-w-2xl max-h-[92vh] flex flex-col p-0 overflow-hidden border-0 bg-[#0f141c] text-white shadow-2xl rounded-2xl">
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className="fixed inset-0 w-screen h-screen max-w-none max-h-none flex flex-col p-0 overflow-hidden border-0 bg-[#0f141c] text-white shadow-2xl rounded-none z-50 [&>button]:hidden"
+      >
         {/* CSS Keyframes for Floating Reaction Animation */}
         <style>{`
           @keyframes floatUp {
@@ -365,7 +369,7 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
           </div>
 
           {/* ── Chat & Listeners Panel ── */}
-          <div className="w-full mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 h-48 md:h-44">
+          <div className="w-full mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 h-64 md:h-56">
             {/* Live Chat Panel */}
             <div className="rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-full">
               <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-white/10 text-xs font-semibold text-stone-300">
