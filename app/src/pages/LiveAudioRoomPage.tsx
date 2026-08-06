@@ -68,6 +68,7 @@ export default function LiveAudioRoomPage() {
     { id: 'p4', name: 'Brother David', isCoModerator: false },
   ])
   const [showExitWarning, setShowExitWarning] = useState(false)
+  const [activePanel, setActivePanel] = useState<'chat' | 'listeners'>('chat')
   
   // Timer countdown state
   const [timeLeft, setTimeLeft] = useState(1800) // Default 30 min
@@ -374,10 +375,38 @@ export default function LiveAudioRoomPage() {
           ))}
         </div>
 
+        {/* Mobile Panel Tabs Switcher */}
+        <div className="flex md:hidden w-full gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => setActivePanel('chat')}
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
+              activePanel === 'chat'
+                ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm font-bold'
+                : 'bg-white/5 border-white/10 text-stone-400 hover:bg-white/10'
+            }`}
+          >
+            Live Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePanel('listeners')}
+            className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
+              activePanel === 'listeners'
+                ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm font-bold'
+                : 'bg-white/5 border-white/10 text-stone-400 hover:bg-white/10'
+            }`}
+          >
+            Listeners ({participants.length})
+          </button>
+        </div>
+
         {/* ── Chat & Listeners Panel ── */}
-        <div className="w-full mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 h-64 md:h-56">
+        <div className="w-full mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 h-64 md:h-56">
           {/* Live Chat Panel */}
-          <div className="rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-full">
+          <div className={`rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-full ${
+            activePanel === 'chat' ? 'flex' : 'hidden md:flex'
+          }`}>
             <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-white/10 text-xs font-semibold text-stone-300">
               <MessageCircle size={14} className="text-blue-400" />
               Live Chat
@@ -404,7 +433,9 @@ export default function LiveAudioRoomPage() {
           </div>
 
           {/* Listeners Directory Panel */}
-          <div className="rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-full overflow-hidden text-left">
+          <div className={`rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-full overflow-hidden text-left ${
+            activePanel === 'listeners' ? 'flex' : 'hidden md:flex'
+          }`}>
             <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-white/10 text-xs font-semibold text-stone-300">
               <Users size={14} className="text-blue-400" />
               Active Listeners ({participants.length})
