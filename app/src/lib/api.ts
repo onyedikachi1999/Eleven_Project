@@ -1,15 +1,25 @@
 // Django REST API client – falls back to localhost in development
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000') + '/api';
 
+let csrfToken: string | null = null;
+
 async function fetchApi(path: string, options: RequestInit = {}) {
   const url = `${API_BASE}${path}`;
+  const method = (options.method ?? 'GET').toUpperCase();
+  
+  const headers = new Headers(options.headers);
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    headers.set('X-CSRFToken', csrfToken);
+  }
+
   const res = await fetch(url, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    headers,
   });
 
   if (!res.ok) {
@@ -31,12 +41,27 @@ export const authApi = {
   verifyPayment: (transactionId: string, plan: 'regular' | 'premium') => fetchApi('/users/verify-payment/', { method: 'POST', body: JSON.stringify({ transaction_id: transactionId, plan }) }),
   cancelSubscription: () => fetchApi('/users/cancel-subscription/', { method: 'POST' }),
   updateProfile: (data: Record<string, unknown>) => fetchApi('/users/update/', { method: 'PATCH', body: JSON.stringify(data) }),
+  fetchCsrfToken: async () => {
+    try {
+      const data = await fetchApi('/auth/csrf/');
+      csrfToken = data.csrfToken;
+      return csrfToken;
+    } catch (e) {
+      console.error('Failed to fetch CSRF token', e);
+      return null;
+    }
+  },
   uploadAvatar: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
     const res = await fetch(`${API_BASE}/users/upload/`, {
       method: 'POST',
       credentials: 'include',
+      headers,
       body: formData,
     });
     if (!res.ok) {
@@ -91,9 +116,14 @@ export const circleApi = {
     const formData = new FormData();
     formData.append('content', content);
     formData.append('image', image);
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
     const res = await fetch(`${API_BASE}/circles/${id}/messages/`, {
       method: 'POST',
       credentials: 'include',
+      headers,
       body: formData,
     });
     if (!res.ok) {
@@ -142,9 +172,14 @@ export const adminApi = {
   upload: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
     const res = await fetch(`${API_BASE}/admin/upload/`, {
       method: 'POST',
       credentials: 'include',
+      headers,
       body: formData,
     });
     if (!res.ok) {

@@ -3,6 +3,8 @@ import uuid
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.core.cache import cache
+from django.middleware.csrf import get_token
 from django.db.models import Q, Count
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.utils import timezone
@@ -288,6 +290,16 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
                     return Response({'detail': 'Unsupported image type. Only JPG, PNG, GIF, WEBP are allowed.'}, status=400)
                 if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
                     return Response({'detail': 'Image must be under 5MB'}, status=400)
+                
+                # Hardened Image Validation via PIL
+                from PIL import Image
+                try:
+                    img = Image.open(uploaded_file)
+                    img.verify()
+                    uploaded_file.seek(0)
+                except Exception:
+                    return Response({'detail': 'Invalid image file. The uploaded file is corrupted or not a valid image.'}, status=400)
+                
                 filename = f"{uuid.uuid4()}{ext}"
                 path = default_storage.save(os.path.join('circle_images', filename), ContentFile(uploaded_file.read()))
                 image_url = request.build_absolute_uri(settings.MEDIA_URL + path)
@@ -442,15 +454,62 @@ class ForumReplyViewSet(viewsets.ModelViewSet):
     serializer_class = ForumReplySerializer
 
 
+def rate_limit_login(request, username):
+    ip = request.META.get('REMOTE_ADDR', '')
+    cache_key_ip = f"login_fails_ip_{ip}"
+    cache_key_user = f"login_fails_user_{username}"
+    
+    fails_ip = cache.get(cache_key_ip, 0)
+    fails_user = cache.get(cache_key_user, 0)
+    
+    if fails_ip >= 5 or fails_user >= 5:
+        return False
+    return True
+
+def record_login_failure(request, username):
+    ip = request.META.get('REMOTE_ADDR', '')
+    cache_key_ip = f"login_fails_ip_{ip}"
+    cache_key_user = f"login_fails_user_{username}"
+    
+    fails_ip = cache.get(cache_key_ip, 0) + 1
+    fails_user = cache.get(cache_key_user, 0) + 1
+    
+    cache.set(cache_key_ip, fails_ip, 300)  # 5 min block
+    cache.set(cache_key_user, fails_user, 300)
+
+def clear_login_failures(request, username):
+    ip = request.META.get('REMOTE_ADDR', '')
+    cache_key_ip = f"login_fails_ip_{ip}"
+    cache_key_user = f"login_fails_user_{username}"
+    cache.delete(cache_key_ip)
+    cache.delete(cache_key_user)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_csrf_token(request):
+    return Response({'csrfToken': get_token(request)})
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def api_login(request):
-    username = request.data.get('username')
+    username = request.data.get('username', '').strip()
     password = request.data.get('password')
+    
+    if not username or not password:
+        return Response({'detail': 'Username and password are required'}, status=400)
+        
+    if not rate_limit_login(request, username):
+        return Response({'detail': 'Too many failed login attempts. Please try again in 5 minutes.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        
     user = authenticate(request, username=username, password=password)
     if user:
         django_login(request, user)
+        clear_login_failures(request, username)
         return Response({'detail': 'Logged in'})
+        
+    record_login_failure(request, username)
     return Response({'detail': 'Invalid credentials'}, status=400)
 
 
@@ -808,10 +867,24 @@ def api_upload(request):
     if not uploaded_file:
         return Response({'detail': 'No file uploaded'}, status=400)
 
+    # Validate file size
+    if uploaded_file.size > 20 * 1024 * 1024:  # 20MB limit
+        return Response({'detail': 'File size exceeds the 20MB limit.'}, status=400)
+
     # Check extension
     ext = os.path.splitext(uploaded_file.name)[1].lower()
     if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.webm']:
         return Response({'detail': 'Unsupported file type'}, status=400)
+
+    # If image, verify via PIL
+    if ext in ['.jpg', '.jpeg', '.png', '.gif']:
+        from PIL import Image
+        try:
+            img = Image.open(uploaded_file)
+            img.verify()
+            uploaded_file.seek(0)
+        except Exception:
+            return Response({'detail': 'Invalid image file. The uploaded file is corrupted or not a valid image.'}, status=400)
 
     # Generate unique filename to avoid conflict
     filename = f"{uuid.uuid4()}{ext}"
@@ -831,10 +904,23 @@ def api_user_upload(request):
     if not uploaded_file:
         return Response({'detail': 'No file uploaded'}, status=400)
 
+    # Validate file size
+    if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
+        return Response({'detail': 'File size exceeds the 5MB limit.'}, status=400)
+
     # Check extension
     ext = os.path.splitext(uploaded_file.name)[1].lower()
     if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
         return Response({'detail': 'Unsupported image type. Only JPG, PNG, GIF are allowed.'}, status=400)
+
+    # Verify via PIL
+    from PIL import Image
+    try:
+        img = Image.open(uploaded_file)
+        img.verify()
+        uploaded_file.seek(0)
+    except Exception:
+        return Response({'detail': 'Invalid image file. The uploaded file is corrupted or not a valid image.'}, status=400)
 
     # Generate unique filename to avoid conflict
     filename = f"{uuid.uuid4()}{ext}"

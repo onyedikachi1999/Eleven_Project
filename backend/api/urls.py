@@ -15,6 +15,7 @@ router.register(r'slides', views.SlideViewSet, basename='slide')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('auth/csrf/', views.api_csrf_token, name='api_csrf_token'),
     path('auth/login/', api_login, name='api_login'),
     path('auth/register/', api_register, name='api_register'),
     path('auth/logout/', api_logout, name='api_logout'),
