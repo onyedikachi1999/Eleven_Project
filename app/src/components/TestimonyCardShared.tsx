@@ -192,7 +192,7 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [amenCount, setAmenCount] = useState(t.amen_count)
-  const [viewCount, setViewCount] = useState(t.view_count)
+  const [viewCount, setViewCount] = useState<number>(t.view_count)
   const [hasReacted, setHasReacted] = useState(t.has_reacted)
   const [isSaved, setIsSaved] = useState(false)
 
