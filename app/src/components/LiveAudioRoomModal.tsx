@@ -25,6 +25,13 @@ interface ChatMessage {
   isAmen?: boolean
 }
 
+interface Participant {
+  id: string
+  name: string
+  avatar?: string
+  isCoModerator: boolean
+}
+
 interface LiveAudioRoomModalProps {
   open: boolean
   onClose: () => void
@@ -55,6 +62,13 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
   const [listenerCount, setListenerCount] = useState(48)
   const [isLiveStreaming, setIsLiveStreaming] = useState(false)
   const [audioLevel, setAudioLevel] = useState(60)
+  const [participants, setParticipants] = useState<Participant[]>([
+    { id: 'p1', name: 'Sister Grace', isCoModerator: false },
+    { id: 'p2', name: 'Brother John', isCoModerator: false },
+    { id: 'p3', name: 'Sister Sarah', isCoModerator: false },
+    { id: 'p4', name: 'Brother David', isCoModerator: false },
+  ])
+  const [showExitWarning, setShowExitWarning] = useState(false)
 
   // Session timer countdown
   const initialSeconds = (session?.duration ? parseInt(String(session.duration), 10) : 30) * 60
@@ -65,6 +79,21 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
   const animFrameRef = useRef<number | null>(null)
 
   const isModerator = Boolean(session?.is_host || user?.role === 'admin' || user?.username === session?.host_name)
+  const hasCoModerator = participants.some(p => p.isCoModerator)
+
+  const toggleCoModerator = (id: string) => {
+    setParticipants(prev =>
+      prev.map(p => (p.id === id ? { ...p, isCoModerator: !p.isCoModerator } : p))
+    )
+    const p = participants.find(part => part.id === id)
+    if (p) {
+      toast.success(
+        p.isCoModerator
+          ? `${p.name} is no longer Co-Host`
+          : `${p.name} has been appointed Co-Host`
+      )
+    }
+  }
 
   // Reset timer & mute state whenever a new session opens
   useEffect(() => {
@@ -203,6 +232,14 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
     setChatInput('')
   }
 
+  const handleLeaveClick = () => {
+    if (isModerator) {
+      setShowExitWarning(true)
+    } else {
+      onClose()
+    }
+  }
+
   if (!session) return null
 
   return (
@@ -327,31 +364,74 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
             ))}
           </div>
 
-          {/* ── Live Prayer Chat Section ── */}
-          <div className="w-full mt-3 rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-40">
-            <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-white/10 text-xs font-semibold text-stone-300">
-              <MessageCircle size={14} className="text-blue-400" />
-              Live Prayer Stream Chat
+          {/* ── Chat & Listeners Panel ── */}
+          <div className="w-full mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 h-48 md:h-44">
+            {/* Live Chat Panel */}
+            <div className="rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-full">
+              <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-white/10 text-xs font-semibold text-stone-300">
+                <MessageCircle size={14} className="text-blue-400" />
+                Live Chat
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+                {messages.map(m => (
+                  <div key={m.id} className="leading-relaxed text-left">
+                    <span className="font-semibold text-emerald-400 mr-1.5">{m.user}:</span>
+                    <span className={m.isAmen ? 'text-amber-300 font-medium' : 'text-stone-200'}>{m.text}</span>
+                  </div>
+                ))}
+              </div>
+              <form onSubmit={handleSendMessage} className="flex gap-2 mt-2 pt-2 border-t border-white/10">
+                <Input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder="Type a prayer..."
+                  className="h-8 text-xs bg-white/10 border-white/10 text-white placeholder:text-stone-500 focus-visible:ring-emerald-500"
+                />
+                <Button type="submit" size="sm" className="h-8 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
+                  <Send size={12} />
+                </Button>
+              </form>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-              {messages.map(m => (
-                <div key={m.id} className="leading-relaxed">
-                  <span className="font-semibold text-emerald-400 mr-1.5">{m.user}:</span>
-                  <span className={m.isAmen ? 'text-amber-300 font-medium' : 'text-stone-200'}>{m.text}</span>
-                </div>
-              ))}
+
+            {/* Listeners Directory Panel */}
+            <div className="rounded-xl bg-black/40 border border-white/10 p-3 flex flex-col h-full overflow-hidden text-left">
+              <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-white/10 text-xs font-semibold text-stone-300">
+                <Users size={14} className="text-blue-400" />
+                Active Listeners ({participants.length})
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+                {participants.map(p => (
+                  <div key={p.id} className="flex items-center justify-between py-0.5">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-5 h-5 border border-white/10">
+                        <AvatarFallback className="bg-stone-800 text-stone-300 font-bold text-[8px] flex items-center justify-center">
+                          {p.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-stone-200 font-medium">{p.name}</span>
+                      {p.isCoModerator && (
+                        <span className="inline-flex items-center gap-0.5 px-1 py-0.2 bg-amber-500/20 text-amber-300 rounded text-[8px] border border-amber-500/30">
+                          <Shield size={8} /> Co-Host
+                        </span>
+                      )}
+                    </div>
+                    {isModerator && (
+                      <button
+                        type="button"
+                        onClick={() => toggleCoModerator(p.id)}
+                        className={`h-5 px-1.5 text-[9px] font-semibold rounded-md transition-colors cursor-pointer border ${
+                          p.isCoModerator
+                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border-red-500/30'
+                            : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border-emerald-500/30'
+                        }`}
+                      >
+                        {p.isCoModerator ? 'Revoke Co-Host' : 'Appoint Co-Host'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-            <form onSubmit={handleSendMessage} className="flex gap-2 mt-2 pt-2 border-t border-white/10">
-              <Input
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                placeholder="Type a prayer or Amen..."
-                className="h-8 text-xs bg-white/10 border-white/10 text-white placeholder:text-stone-500 focus-visible:ring-emerald-500"
-              />
-              <Button type="submit" size="sm" className="h-8 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
-                <Send size={12} />
-              </Button>
-            </form>
           </div>
         </div>
 
@@ -388,13 +468,60 @@ export default function LiveAudioRoomModal({ open, onClose, session }: LiveAudio
           </div>
 
           <Button
-            onClick={onClose}
+            onClick={handleLeaveClick}
             className="rounded-full h-10 px-5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-2 shadow-lg hover:scale-105 transition-all"
           >
             <PhoneOff size={16} />
             Leave Room
           </Button>
         </div>
+
+        {/* ── Exit Warning Dialog ── */}
+        <Dialog open={showExitWarning} onOpenChange={setShowExitWarning}>
+          <DialogContent className="sm:max-w-md bg-[#161c27] border border-white/10 text-white p-5 rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
+                <Shield size={20} className={hasCoModerator ? "text-amber-400" : "text-red-400"} />
+                {hasCoModerator ? "Leave Live Session?" : "End Live Session for Everyone?"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4 text-sm text-stone-300 space-y-2 text-left">
+              {hasCoModerator ? (
+                <p>
+                  You have appointed a co-moderator. If you leave, the live prayer session will continue running under their leadership.
+                </p>
+              ) : (
+                <p>
+                  You are the moderator of this session. Leaving now will **end the live prayer room for all {listenerCount} listeners**.
+                  To keep it active, cancel and appoint a listener as a co-moderator first.
+                </p>
+              )}
+              <p className="text-xs text-stone-500 italic mt-2">
+                Are you sure you want to proceed?
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 mt-2">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setShowExitWarning(false)}
+                className="bg-white/5 border-white/10 hover:bg-white/10 text-stone-300"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowExitWarning(false)
+                  onClose()
+                }}
+                className={hasCoModerator ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-red-600 hover:bg-red-500 text-white"}
+              >
+                {hasCoModerator ? "Leave Room" : "End Session & Exit"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   )
