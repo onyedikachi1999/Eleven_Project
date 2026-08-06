@@ -256,16 +256,17 @@ export default function LiveAudioRoomPage() {
             // If we are host/speaker, dial any new participant who has a peer_id
             if (isHostSpeaker && peerRef.current && localStreamRef.current) {
               mapped.forEach((p: Participant) => {
-                if (p.user_id !== user?.id && p.peer_id && !activeCallsRef.current[p.peer_id]) {
-                  console.log('Host dialing listener peer: ' + p.peer_id)
-                  const call = peerRef.current.call(p.peer_id, localStreamRef.current)
+                const pPeerId = p.peer_id
+                if (p.user_id !== user?.id && pPeerId && !activeCallsRef.current[pPeerId]) {
+                  console.log('Host dialing listener peer: ' + pPeerId)
+                  const call = peerRef.current.call(pPeerId, localStreamRef.current)
                   if (call) {
-                    activeCallsRef.current[p.peer_id] = call
+                    activeCallsRef.current[pPeerId] = call
                     call.on('close', () => {
-                      delete activeCallsRef.current[p.peer_id]
+                      delete activeCallsRef.current[pPeerId]
                     })
                     call.on('error', () => {
-                      delete activeCallsRef.current[p.peer_id]
+                      delete activeCallsRef.current[pPeerId]
                     })
                   }
                 }
