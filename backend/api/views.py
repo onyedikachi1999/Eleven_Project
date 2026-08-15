@@ -390,7 +390,7 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         is_live = self.request.data.get('is_live', False)
         if is_live and self.request.user.subscription_plan != 'premium' and self.request.user.role != 'admin':
             from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only Premium Watchers can go live.")
+            raise PermissionDenied("Only Premium members can go live.")
         serializer.save(host=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):

@@ -33,7 +33,7 @@ interface Plan {
 const plans: Plan[] = [
   {
     id: 'free',
-    name: 'Free Watcher',
+    name: 'Free',
     price: '₦0',
     period: 'forever',
     description: 'Share testimonies, pray for others, and explore community content.',
@@ -54,7 +54,7 @@ const plans: Plan[] = [
   },
   {
     id: 'regular',
-    name: 'Regular Watcher',
+    name: 'Regular',
     price: '₦5,000',
     period: 'month',
     description: 'Engage actively in discussions and create prayer circles.',
@@ -75,7 +75,7 @@ const plans: Plan[] = [
   },
   {
     id: 'premium',
-    name: 'Premium Watcher',
+    name: 'Premium',
     price: '₦15,000',
     period: 'month',
     description: 'Host live prayer sessions and access full platform features.',

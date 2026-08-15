@@ -216,7 +216,7 @@ export default function ElevenTV() {
               <Radio size={40} className="mx-auto mb-3 text-stone-300 animate-pulse" />
               <h3 className="text-sm font-bold text-stone-600">No Active Live Streams</h3>
               <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
-                There are currently no live events. Premium Watchers can click "Go Live" at the top to start streaming church events or activities!
+                There are currently no live events. Premium members can click "Go Live" at the top to start streaming church events or activities!
               </p>
             </div>
           )}
@@ -303,7 +303,7 @@ export default function ElevenTV() {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-stone-500 leading-relaxed">
-              Only <strong className="text-[#8b6914]">Premium Watchers</strong> can host and broadcast live streams of events, vigils, or church services to ElevenFaith TV.
+              Only <strong className="text-[#8b6914]">Premium members</strong> can host and broadcast live streams of events, vigils, or church services to ElevenFaith TV.
             </p>
             <p className="text-xs text-stone-400 mt-2">
               Upgrade your subscription to unlock streaming permissions immediately.
