@@ -120,8 +120,8 @@ export default function LiveAudioRoomPage() {
           setIsMuted(false)
         }
       })
-      .catch(() => {
-        toast.error('Failed to connect to live session')
+      .catch((err: any) => {
+        toast.error(err?.message || 'Failed to connect to live session')
         navigate('/joint-prayer')
       })
       .finally(() => {
