@@ -217,6 +217,7 @@ export default function JointPrayer() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [schedules, setSchedules] = useState<any[]>([])
+  const [pastSchedules, setPastSchedules] = useState<any[]>([])
   const [circles, setCircles] = useState<any[]>([])
   const [liveSession, setLiveSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -224,6 +225,7 @@ export default function JointPrayer() {
   const loadSchedules = () => {
     scheduleApi.upcoming().then(r => setSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
     scheduleApi.live().then(r => setLiveSession(r)).catch(() => {})
+    scheduleApi.past().then(r => setPastSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
   }
 
   const loadCircles = () => {
@@ -235,8 +237,9 @@ export default function JointPrayer() {
     const p1 = scheduleApi.upcoming().then(r => setSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
     const p2 = scheduleApi.live().then(r => setLiveSession(r)).catch(() => {})
     const p3 = circleApi.list().then(r => setCircles(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
+    const p4 = scheduleApi.past().then(r => setPastSchedules(r ? (Array.isArray(r) ? r : (r.results ?? [])) : [])).catch(() => {})
     
-    Promise.all([p1, p2, p3]).finally(() => setLoading(false))
+    Promise.all([p1, p2, p3, p4]).finally(() => setLoading(false))
   }, [])
 
   const handleJoinSession = (sessionData: any) => {
@@ -342,6 +345,37 @@ export default function JointPrayer() {
             </div>
           )}
         </section>
+
+        {/* Past Sessions */}
+        {pastSchedules.length > 0 && (
+          <section className="mt-8">
+            <h2 className="font-display text-xl font-semibold mb-4" style={{ color: 'var(--eleven-text)' }}>Past Live Sessions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-75">
+              {pastSchedules.map(s => (
+                <div key={s.id} className="bg-stone-50 rounded-xl p-5 border border-stone-200 flex flex-col justify-between" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-600">
+                        FINISHED
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-stone-400">
+                        <span className="flex items-center gap-1 font-medium text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md"><Clock size={11} /> {s.duration || 30}m</span>
+                        <span>{formatTime(s.scheduled_at)}</span>
+                      </div>
+                    </div>
+                    <h3 className="font-display text-base font-semibold mb-1 text-stone-700">{s.title}</h3>
+                    <p className="text-xs line-clamp-2 mb-3 text-stone-500">{s.description}</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between pt-3 border-t border-stone-200 mb-1">
+                      <span className="text-xs flex items-center gap-1 text-stone-400"><Users size={12} /> {s.participant_count || 0} participants</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-xl font-semibold" style={{ color: 'var(--eleven-text)' }}>Prayer Circles</h2>

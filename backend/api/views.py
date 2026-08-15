@@ -395,17 +395,64 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def upcoming(self, request):
-        two_hours_ago = timezone.now() - timezone.timedelta(hours=2)
-        qs = ScheduledPrayer.objects.filter(scheduled_at__gte=two_hours_ago).order_by('scheduled_at')
-        serializer = ScheduledPrayerSerializer(qs, many=True)
+        from django.utils import timezone
+        now = timezone.now()
+        
+        # Auto-deactivate expired live sessions
+        all_live = ScheduledPrayer.objects.filter(is_live=True)
+        for s in all_live:
+            if s.scheduled_at + timezone.timedelta(minutes=s.duration) < now:
+                s.is_live = False
+                s.save()
+                
+        # Return sessions whose end time is in the future
+        qs = ScheduledPrayer.objects.filter(scheduled_at__gte=now - timezone.timedelta(hours=6)).order_by('scheduled_at')
+        active_sessions = []
+        for s in qs:
+            if s.scheduled_at + timezone.timedelta(minutes=s.duration) >= now:
+                active_sessions.append(s)
+                
+        serializer = ScheduledPrayerSerializer(active_sessions[:50], many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def live(self, request):
+        from django.utils import timezone
+        now = timezone.now()
+        
+        # Auto-deactivate expired live sessions
+        all_live = ScheduledPrayer.objects.filter(is_live=True)
+        for s in all_live:
+            if s.scheduled_at + timezone.timedelta(minutes=s.duration) < now:
+                s.is_live = False
+                s.save()
+                
         session = ScheduledPrayer.objects.filter(is_live=True).first()
         if session:
             return Response(ScheduledPrayerSerializer(session).data)
         return Response(None)
+
+    @action(detail=False, methods=['get'])
+    def past(self, request):
+        from django.utils import timezone
+        now = timezone.now()
+        
+        # Auto-deactivate expired live sessions
+        all_live = ScheduledPrayer.objects.filter(is_live=True)
+        for s in all_live:
+            if s.scheduled_at + timezone.timedelta(minutes=s.duration) < now:
+                s.is_live = False
+                s.save()
+                
+        # Return sessions whose end time is in the past
+        qs = ScheduledPrayer.objects.filter(scheduled_at__lt=now).order_by('-scheduled_at')
+        past_sessions = []
+        for s in qs:
+            if s.scheduled_at + timezone.timedelta(minutes=s.duration) < now:
+                past_sessions.append(s)
+                
+        serializer = ScheduledPrayerSerializer(past_sessions[:50], many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
