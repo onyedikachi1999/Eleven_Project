@@ -69,6 +69,7 @@ export default function LiveAudioRoomPage() {
   const audioQueueRef = useRef<string[]>([])
   const isPlayingRef = useRef<boolean>(false)
   const isDeafenedRef = useRef<boolean>(false)
+  const hasLeftRef = useRef<boolean>(false)
 
   // Compute Moderator role
   const isHostSpeaker = Boolean(
@@ -354,8 +355,10 @@ export default function LiveAudioRoomPage() {
       clearInterval(timer)
       clearInterval(syncInterval)
       clearInterval(visualizerInterval)
-      // Call leave endpoint on exit
-      scheduleApi.leaveRoom(id).catch(() => {})
+      // Call leave endpoint on exit if not already left
+      if (!hasLeftRef.current && id) {
+        scheduleApi.leaveRoom(id).catch(() => {})
+      }
     }
   }, [loading, session, id, user, isHostSpeaker, isMuted])
 
@@ -807,8 +810,34 @@ export default function LiveAudioRoomPage() {
             </Button>
             <Button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 setShowExitWarning(false)
+                hasLeftRef.current = true
+                
+                if (id && id.startsWith('s')) {
+                  const hasCoMod = participants.some(p => p.isCoModerator && p.user_id !== session?.host_id)
+                  if (hasCoMod) {
+                    const firstCoMod = participants.find(p => p.isCoModerator && p.user_id !== session?.host_id)
+                    toast.success(`Room handed over to Co-Host: ${firstCoMod?.name || 'Co-Host'}`)
+                  } else {
+                    toast.success('Live prayer session has been ended successfully.')
+                  }
+                  navigate('/joint-prayer')
+                  return
+                }
+
+                try {
+                  const res = await scheduleApi.leaveRoom(id)
+                  if (res && res.status === 'handed_over') {
+                    toast.success(`Room handed over to Co-Host: ${res.co_moderator_name}`)
+                  } else if (res && res.status === 'ended') {
+                    toast.success('Live prayer session has been ended successfully.')
+                  } else {
+                    toast.success('Left the live session.')
+                  }
+                } catch {
+                  toast.error('Failed to leave room cleanly.')
+                }
                 navigate('/joint-prayer')
               }}
               className={participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-red-600 hover:bg-red-500 text-white"}

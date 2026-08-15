@@ -498,10 +498,37 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Authentication required'}, status=401)
         session = self.get_object()
         from .models import LiveRoomParticipant
+        
+        # Check if user leaving is host/moderator
+        is_host = (request.user == session.host or request.user.role == 'admin')
+        
+        # Delete participant record
         LiveRoomParticipant.objects.filter(session=session, user=request.user).delete()
+        
+        status_str = 'left'
+        co_mod_name = None
+        
+        if is_host:
+            # Check if there are other co-moderators still in the room
+            co_mods = LiveRoomParticipant.objects.filter(session=session, is_co_moderator=True).exclude(user=request.user)
+            if co_mods.exists():
+                # Hand over host status to the first co-moderator
+                first_co = co_mods.first()
+                session.host = first_co.user
+                session.save()
+                status_str = 'handed_over'
+                co_mod_name = first_co.user.get_full_name() or first_co.user.username or 'Co-Host'
+            else:
+                # End the session
+                session.is_live = False
+                session.save()
+                # Clear all participants
+                LiveRoomParticipant.objects.filter(session=session).delete()
+                status_str = 'ended'
+                
         session.participant_count = LiveRoomParticipant.objects.filter(session=session).count()
         session.save()
-        return Response({'status': 'left'})
+        return Response({'status': status_str, 'co_moderator_name': co_mod_name})
 
     @action(detail=True, methods=['get'])
     def sync(self, request, pk=None):
