@@ -178,14 +178,37 @@ export const scheduleApi = {
   joinRoom: (id: number | string, peerId?: string) => fetchApi(`/schedules/${id}/join/`, { method: 'POST', body: JSON.stringify({ peer_id: peerId }) }),
   leaveRoom: (id: number | string) => fetchApi(`/schedules/${id}/leave/`, { method: 'POST' }),
   sendHeartbeat: (id: number | string, peerId?: string) => fetchApi(`/schedules/${id}/heartbeat/`, { method: 'POST', body: JSON.stringify({ peer_id: peerId }) }),
-  syncRoom: (id: number | string, lastMsgId?: string | number, lastReactId?: string | number) => 
-    fetchApi(`/schedules/${id}/sync/?last_message_id=${lastMsgId || ''}&last_reaction_id=${lastReactId || ''}`),
+  syncRoom: (id: number | string, lastMsgId?: string | number, lastReactId?: string | number, lastSequence?: number) => 
+    fetchApi(`/schedules/${id}/sync/?last_message_id=${lastMsgId || ''}&last_reaction_id=${lastReactId || ''}&last_sequence=${lastSequence !== undefined ? lastSequence : ''}`),
   sendLiveMessage: (id: number | string, text: string) => 
     fetchApi(`/schedules/${id}/send_message/`, { method: 'POST', body: JSON.stringify({ text }) }),
   sendLiveReaction: (id: number | string, emoji: string, label: string) => 
     fetchApi(`/schedules/${id}/send_reaction/`, { method: 'POST', body: JSON.stringify({ emoji, label }) }),
   toggleCoModerator: (id: number | string, userId: number | string) => 
     fetchApi(`/schedules/${id}/toggle_co_moderator/`, { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  uploadAudio: async (id: number | string, sequence: number, audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append('sequence', sequence.toString());
+    formData.append('audio', audioBlob, 'audio.webm');
+    
+    const headers: Record<string, string> = {};
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      headers['Authorization'] = `Token ${token}`;
+    }
+    
+    const res = await fetch(`${API_BASE}/schedules/${id}/upload_audio/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload error' }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
 };
 
 // Forum

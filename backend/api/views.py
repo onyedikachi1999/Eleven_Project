@@ -459,12 +459,13 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def sync(self, request, pk=None):
         session = self.get_object()
-        from .models import LiveRoomMessage, LiveRoomParticipant, LiveRoomReaction
+        from .models import LiveRoomMessage, LiveRoomParticipant, LiveRoomReaction, LiveAudioChunk
         from .serializers import LiveRoomMessageSerializer, LiveRoomParticipantSerializer
         from django.utils import timezone
         
         last_msg_id = request.query_params.get('last_message_id')
         last_react_id = request.query_params.get('last_reaction_id')
+        last_seq = request.query_params.get('last_sequence')
         
         participants = LiveRoomParticipant.objects.filter(session=session).order_by('joined_at')
         participants_data = LiveRoomParticipantSerializer(participants, many=True).data
@@ -489,13 +490,20 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
                 'x': hash(str(r.id)) % 70 + 15
             })
             
+        # Get new audio chunks
+        chunks_qs = LiveAudioChunk.objects.filter(session=session)
+        if last_seq and last_seq.isdigit():
+            chunks_qs = chunks_qs.filter(sequence__gt=int(last_seq))
+        chunks_data = [{'sequence': c.sequence, 'url': c.url} for c in chunks_qs[:15]]
+            
         old_reactions = LiveRoomReaction.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(minutes=1))
         old_reactions.delete()
         
         return Response({
             'participants': participants_data,
             'messages': messages_data,
-            'reactions': reactions_data
+            'reactions': reactions_data,
+            'audio_chunks': chunks_data
         })
 
     @action(detail=True, methods=['post'])
@@ -525,6 +533,57 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         from .models import LiveRoomReaction
         reaction = LiveRoomReaction.objects.create(session=session, user=request.user, emoji=emoji, label=label)
         return Response({'status': 'reaction_sent', 'id': reaction.id})
+
+    @action(detail=True, methods=['post'])
+    def upload_audio(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+        session = self.get_object()
+        
+        # Verify user is moderator or co-host
+        from .models import LiveRoomParticipant
+        is_host = (request.user == session.host or request.user.role == 'admin')
+        is_co_moderator = LiveRoomParticipant.objects.filter(session=session, user=request.user, is_co_moderator=True).exists()
+        if not is_host and not is_co_moderator:
+            return Response({'detail': 'Only moderators or co-hosts can broadcast audio'}, status=403)
+            
+        uploaded_file = request.FILES.get('audio')
+        sequence = request.data.get('sequence')
+        if not uploaded_file or not sequence:
+            return Response({'detail': 'Audio file and sequence number are required'}, status=400)
+            
+        try:
+            sequence = int(sequence)
+        except ValueError:
+            return Response({'detail': 'Invalid sequence number'}, status=400)
+            
+        import uuid
+        import os
+        from django.core.files.storage import default_storage
+        from django.core.files.base import ContentFile
+        from django.conf import settings
+        
+        # Save file to default storage
+        ext = '.webm' if 'webm' in uploaded_file.content_type else '.mp4'
+        filename = f"{session.id}_{sequence}_{uuid.uuid4()}{ext}"
+        path = default_storage.save(os.path.join('live_audio', filename), ContentFile(uploaded_file.read()))
+        url = request.build_absolute_uri(settings.MEDIA_URL + path)
+        
+        from .models import LiveAudioChunk
+        LiveAudioChunk.objects.create(session=session, sequence=sequence, url=url)
+        
+        # Auto delete old chunks (> 60 seconds old) to save disk space
+        from django.utils import timezone
+        old_chunks = LiveAudioChunk.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(seconds=60))
+        for oc in old_chunks:
+            try:
+                rel_path = oc.url.split(settings.MEDIA_URL)[-1]
+                default_storage.delete(rel_path)
+            except:
+                pass
+        old_chunks.delete()
+        
+        return Response({'status': 'uploaded', 'sequence': sequence, 'url': url})
 
     @action(detail=True, methods=['post'])
     def toggle_co_moderator(self, request, pk=None):

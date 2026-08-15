@@ -329,3 +329,14 @@ class LiveRoomReaction(models.Model):
     class Meta:
         db_table = 'live_room_reactions'
         ordering = ['created_at']
+
+
+class LiveAudioChunk(models.Model):
+    session = models.ForeignKey(ScheduledPrayer, on_delete=models.CASCADE, related_name='audio_chunks')
+    sequence = models.IntegerField()
+    url = models.URLField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'live_audio_chunks'
+        ordering = ['sequence']

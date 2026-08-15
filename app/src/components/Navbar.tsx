@@ -7,9 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import ElevenLogo from '@/components/ElevenLogo'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Bell,
-  User, LogOut, Shield, HandHeart, CreditCard, Sun, Moon
+  User, LogOut, Shield, HandHeart, CreditCard
 } from 'lucide-react'
-import { useTheme } from '@/hooks/useTheme'
 
 const navLinks = [
   { to: '/', label: 'Home', icon: Home },
@@ -24,7 +23,6 @@ const navLinks = [
 export default function Navbar() {
   const location = useLocation()
   const { user, isAuthenticated, isLoading, isAdmin, logout } = useAuth()
-  const { theme, toggleTheme } = useTheme()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -40,8 +38,8 @@ export default function Navbar() {
     <header 
       className={`sticky top-0 z-50 transition-all duration-300 border-t-2 border-b ${
         scrolled 
-          ? 'bg-white/80 dark:bg-[#121212]/80 backdrop-blur-lg shadow-[0_4px_30px_rgba(0,0,0,0.02)]' 
-          : 'bg-white/50 dark:bg-[#121212]/50 backdrop-blur-md'
+          ? 'bg-white/80 backdrop-blur-lg shadow-[0_4px_30px_rgba(0,0,0,0.02)]' 
+          : 'bg-white/50 backdrop-blur-md'
       }`} 
       style={{ 
         borderColor: 'var(--eleven-border)', 
@@ -76,19 +74,10 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button 
-            onClick={toggleTheme}
-            className="p-2 rounded-lg transition-colors hover:bg-black/5 hover:dark:bg-white/5 flex relative cursor-pointer" 
-            style={{ color: 'var(--eleven-text-secondary)' }}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {theme === 'dark' ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
-          </button>
-
           {isAuthenticated && (
             <Link 
               to="/notifications"
-              className="p-2 rounded-lg transition-colors hover:bg-black/5 hover:dark:bg-white/5 hidden sm:flex relative cursor-pointer" 
+              className="p-2 rounded-lg transition-colors hover:bg-black/5 hidden sm:flex relative cursor-pointer" 
               style={{ color: 'var(--eleven-text-secondary)' }}
               title="Notifications"
             >
@@ -151,7 +140,7 @@ export default function Navbar() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <p className="font-medium text-sm">{user.name ?? 'User'}</p>
-                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700 capitalize">
+                          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-200 capitalize">
                             {user.subscription_plan || 'free'}
                           </span>
                         </div>
@@ -166,18 +155,18 @@ export default function Navbar() {
                   )}
                 </div>
                 <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
-                  {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5 dark:bg-white/5' : 'hover:bg-black/5 dark:hover:bg-white/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}
+                  {navLinks.map(link => { const Icon = link.icon; const isActive = location.pathname === link.to; return <Link key={link.to} to={link.to} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-black/5' : 'hover:bg-black/5'}`} style={{ color: isActive ? 'var(--eleven-text)' : 'var(--eleven-text-secondary)' }}><Icon size={18} />{link.label}</Link> })}
                   
                   {isAuthenticated && (
                     <>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 pt-4 pb-1">Account</div>
-                      <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><User size={16} />My Dashboard</Link>
-                      <Link to="/notifications" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Bell size={16} />Notifications</Link>
-                      {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Shield size={16} />Admin Panel</Link>}
+                      <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><User size={16} />My Dashboard</Link>
+                      <Link to="/notifications" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Bell size={16} />Notifications</Link>
+                      {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><Shield size={16} />Admin Panel</Link>}
                     </>
                   )}
                 </nav>
-                {isAuthenticated && <div className="p-4 border-t" style={{ borderColor: 'var(--eleven-border)' }}><button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><LogOut size={18} />Sign Out</button></div>}
+                {isAuthenticated && <div className="p-4 border-t" style={{ borderColor: 'var(--eleven-border)' }}><button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full hover:bg-black/5 transition-colors" style={{ color: 'var(--eleven-text-secondary)' }}><LogOut size={18} />Sign Out</button></div>}
               </div>
             </SheetContent>
           </Sheet>

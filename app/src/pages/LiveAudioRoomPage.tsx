@@ -51,21 +51,24 @@ export default function LiveAudioRoomPage() {
   const [listenerCount, setListenerCount] = useState(0)
   const [audioLevel, setAudioLevel] = useState(12)
   const [activePanel, setActivePanel] = useState<'chat' | 'listeners'>('chat')
-  const [peerLoaded, setPeerLoaded] = useState(false)
   
   const [participants, setParticipants] = useState<Participant[]>([])
   const [showExitWarning, setShowExitWarning] = useState(false)
   const [timeLeft, setTimeLeft] = useState(1800)
 
-  // WebRTC & Sync Refs
-  const peerRef = useRef<any>(null)
+  // Refs
   const localStreamRef = useRef<MediaStream | null>(null)
-  const audioElRef = useRef<HTMLAudioElement | null>(null)
   const lastMsgIdRef = useRef<number>(0)
   const lastReactIdRef = useRef<number>(0)
   const isModeratorRef = useRef<boolean>(false)
-  const activeCallsRef = useRef<Record<string, any>>({})
-  const myPeerIdRef = useRef<string | undefined>(undefined)
+
+  // HTTP Live Audio Chunks Refs & State
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const sequenceCounterRef = useRef<number>(0)
+  const lastSequenceRef = useRef<number>(-1)
+  const audioQueueRef = useRef<string[]>([])
+  const isPlayingRef = useRef<boolean>(false)
+  const isDeafenedRef = useRef<boolean>(false)
 
   // Compute Moderator role
   const isHostSpeaker = Boolean(
@@ -76,139 +79,96 @@ export default function LiveAudioRoomPage() {
   )
   isModeratorRef.current = isHostSpeaker
 
-  // 1. Dynamic script loader for PeerJS
+  // Sync deafened state to ref
   useEffect(() => {
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js'
-    script.async = true
-    script.onload = () => {
-      setPeerLoaded(true)
-    }
-    script.onerror = () => {
-      toast.error('Failed to load real-time WebRTC audio library.')
-    }
-    document.body.appendChild(script)
+    isDeafenedRef.current = isDeafened
+  }, [isDeafened])
 
-    // Hidden audio element for WebRTC playback
-    const audioEl = document.createElement('audio')
-    audioEl.style.display = 'none'
-    document.body.appendChild(audioEl)
-    audioElRef.current = audioEl
-
-    return () => {
-      document.body.removeChild(script)
-      document.body.removeChild(audioEl)
-      cleanupWebRTC()
-    }
-  }, [])
-
-  // 2. Fetch session details on load
+  // Join room on load
   useEffect(() => {
-    if (!id) return
-    setLoading(true)
+    if (loading || !session || !id) return
+    scheduleApi.joinRoom(id).catch(() => {})
+  }, [loading, session, id])
 
-    scheduleApi.get(id)
-      .then(data => {
-        setSession(data)
-        setTimeLeft((data.duration || 30) * 60)
-        // If owner/host, enable speaking
-        if (user?.role === 'admin' || user?.id === data.host_id) {
-          setIsMuted(false)
-        }
-      })
-      .catch(() => {
-        toast.error('Failed to connect to live session')
-        navigate('/joint-prayer')
-      })
-      .finally(() => {
-        setLoading(false)
-      })
-  }, [id, user, navigate])
-
-  // 3. Initialize PeerJS WebRTC Connection
+  // 1. Audio Recording Loop for Host/Moderator
   useEffect(() => {
-    if (loading || !session || !peerLoaded || !id) return
+    if (loading || !session || !id) return
 
-    const Peer = (window as any).Peer
-    if (!Peer) return
+    stopRecording()
 
-    // Clean any prior peers
-    cleanupWebRTC()
-
-    const peer = new Peer()
-    peerRef.current = peer
-
-    peer.on('open', (peerId: string) => {
-      console.log('PeerJS initialized with ID: ' + peerId)
-      myPeerIdRef.current = peerId
-      
-      scheduleApi.joinRoom(id, peerId)
-        .then(res => {
-          if (res && res.is_co_moderator) {
-            setIsMuted(false)
-          }
-        })
-        .catch(() => {})
-    })
-
-    // Listeners and Speakers can both receive incoming media streams
-    peer.on('call', (call: any) => {
-      console.log('Answering incoming WebRTC call...')
-      call.answer(localStreamRef.current || undefined) // Answer without stream if we are just a listener
-      
-      call.on('stream', (remoteStream: any) => {
-        console.log('Received remote audio stream!')
-        if (audioElRef.current) {
-          audioElRef.current.srcObject = remoteStream
-          audioElRef.current.play().catch(e => {
-            console.warn('Playback blocked. Waiting for user interaction.', e)
-          })
-        }
-      })
-    })
-
-    peer.on('error', (err: any) => {
-      console.error('Peer error:', err)
-    })
-
-    // Acquire microphone if we are host speaker
-    if (isHostSpeaker) {
+    if (isHostSpeaker && !isMuted) {
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
           localStreamRef.current = stream
-          // Mute tracks initially if muted
-          stream.getAudioTracks().forEach(track => {
-            track.enabled = !isMuted
-          })
+
+          // Determine standard audio mimeType supported by the browser
+          let mimeType = 'audio/webm'
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/mp4' // iOS Safari fallback
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = '' // Default native format
+            }
+          }
+
+          const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+          mediaRecorderRef.current = recorder
+
+          recorder.ondataavailable = async (e) => {
+            if (e.data && e.data.size > 0) {
+              const currentSeq = sequenceCounterRef.current++
+              console.log(`Uploading audio chunk #${currentSeq} (${e.data.size} bytes)`)
+              try {
+                await scheduleApi.uploadAudio(id, currentSeq, e.data)
+              } catch (err) {
+                console.error('Audio chunk upload failed:', err)
+              }
+            }
+          }
+
+          // Trigger data slice every 3 seconds (3000ms)
+          recorder.start(3000)
+          console.log(`MediaRecorder started with format: ${mimeType || 'default'}`)
         })
         .catch(err => {
-          console.error('Mic acquisition failed:', err)
-          toast.error('Microphone access is required to speak.')
+          console.error('Failed to get microphone stream:', err)
+          toast.error('Microphone access is required to host the live audio room.')
+          setIsMuted(true)
         })
     }
 
     return () => {
-      cleanupWebRTC()
+      stopRecording()
     }
-  }, [loading, session, peerLoaded, isHostSpeaker, id])
+  }, [loading, session, id, isHostSpeaker, isMuted])
 
-  // 4. Update WebRTC Microphone track status when isMuted changes
-  useEffect(() => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(track => {
-        track.enabled = !isMuted
-      })
+  // 2. Client Audio Playback Playlist Manager
+  const playNextChunk = () => {
+    if (audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false
+      return
     }
-  }, [isMuted])
 
-  // 5. Update remote audio volume based on Deafened state
-  useEffect(() => {
-    if (audioElRef.current) {
-      audioElRef.current.volume = isDeafened ? 0 : 1
+    isPlayingRef.current = true
+    const nextUrl = audioQueueRef.current.shift()!
+    const audio = new Audio(nextUrl)
+    audio.volume = isDeafenedRef.current ? 0 : 1
+
+    audio.onended = () => {
+      playNextChunk()
     }
-  }, [isDeafened])
 
-  // 6. Join room, start Polling (Heartbeat & Sync) Loop
+    audio.onerror = (e) => {
+      console.error('Audio playback chunk error:', e)
+      playNextChunk()
+    }
+
+    audio.play().catch(err => {
+      console.warn('Audio play autoplay blocked, skipping or retrying.', err)
+      playNextChunk()
+    })
+  }
+
+  // 3. Join room, start Polling (Heartbeat & Sync) Loop
   useEffect(() => {
     if (loading || !session || !id) return
 
@@ -228,7 +188,7 @@ export default function LiveAudioRoomPage() {
     // 2-second Sync loop
     const syncInterval = setInterval(() => {
       // 1. Send Heartbeat to keep active list correct
-      scheduleApi.sendHeartbeat(id, myPeerIdRef.current)
+      scheduleApi.sendHeartbeat(id)
         .then(res => {
           if (res && typeof res.participant_count === 'number') {
             setListenerCount(res.participant_count)
@@ -236,8 +196,8 @@ export default function LiveAudioRoomPage() {
         })
         .catch(() => {})
 
-      // 2. Synchronize Chat, Participants, and Reactions
-      scheduleApi.syncRoom(id, lastMsgIdRef.current, lastReactIdRef.current)
+      // 2. Synchronize Chat, Participants, Reactions, and Audio Chunks
+      scheduleApi.syncRoom(id, lastMsgIdRef.current, lastReactIdRef.current, lastSequenceRef.current)
         .then(data => {
           if (!data) return
 
@@ -248,35 +208,32 @@ export default function LiveAudioRoomPage() {
               user_id: p.user_id,
               name: p.name,
               avatar: p.avatar,
-              isCoModerator: p.is_co_moderator,
-              peer_id: p.peer_id
+              isCoModerator: p.is_co_moderator
             }))
             setParticipants(mapped)
-
-            // If we are host/speaker, dial any new participant who has a peer_id
-            if (isHostSpeaker && peerRef.current && localStreamRef.current) {
-              mapped.forEach((p: Participant) => {
-                const pPeerId = p.peer_id
-                if (p.user_id !== user?.id && pPeerId && !activeCallsRef.current[pPeerId]) {
-                  console.log('Host dialing listener peer: ' + pPeerId)
-                  const call = peerRef.current.call(pPeerId, localStreamRef.current)
-                  if (call) {
-                    activeCallsRef.current[pPeerId] = call
-                    call.on('close', () => {
-                      delete activeCallsRef.current[pPeerId]
-                    })
-                    call.on('error', () => {
-                      delete activeCallsRef.current[pPeerId]
-                    })
-                  }
-                }
-              })
-            }
 
             // Dynamic Co-Moderator promotion check for current user
             const currentParticipant = mapped.find(p => p.user_id === user?.id)
             if (currentParticipant && currentParticipant.isCoModerator && isMuted) {
               toast.success('You have been promoted to Co-Host. You can now unmute and speak!')
+            }
+          }
+
+          // Sync Audio Chunks (Only for listeners, speakers don't need to listen to their own voice)
+          if (!isHostSpeaker && Array.isArray(data.audio_chunks) && data.audio_chunks.length > 0) {
+            // Sort ascending by sequence
+            const sortedChunks = [...data.audio_chunks].sort((a, b) => a.sequence - b.sequence)
+            const newUrls = sortedChunks.map(c => c.url)
+            
+            audioQueueRef.current.push(...newUrls)
+            
+            const maxSeq = Math.max(...sortedChunks.map(c => c.sequence))
+            if (maxSeq > lastSequenceRef.current) {
+              lastSequenceRef.current = maxSeq
+            }
+
+            if (!isPlayingRef.current) {
+              playNextChunk()
             }
           }
 
@@ -294,7 +251,6 @@ export default function LiveAudioRoomPage() {
               const filteredNew = newMsgs.filter(m => !ids.has(m.id))
               return [...prev, ...filteredNew]
             })
-            // Update last read message ID
             const maxId = Math.max(...data.messages.map((m: any) => m.id))
             if (maxId > lastMsgIdRef.current) {
               lastMsgIdRef.current = maxId
@@ -309,14 +265,11 @@ export default function LiveAudioRoomPage() {
               label: r.label,
               x: r.x
             }))
-            // Add new reactions to display float-up animation
             setReactions(prev => [...prev, ...newReacts])
-            // Remove them after animation completes
             setTimeout(() => {
               setReactions(prev => prev.filter(r => !newReacts.map(nr => nr.id).includes(r.id)))
             }, 2200)
 
-            // Update last read reaction ID
             const maxReactId = Math.max(...data.reactions.map((r: any) => r.id))
             if (maxReactId > lastReactIdRef.current) {
               lastReactIdRef.current = maxReactId
@@ -344,21 +297,23 @@ export default function LiveAudioRoomPage() {
     }
   }, [loading, session, id, user, isHostSpeaker, isMuted])
 
-  const cleanupWebRTC = () => {
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop()
+      } catch {}
+      mediaRecorderRef.current = null
+    }
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(t => t.stop())
       localStreamRef.current = null
     }
-    // Clean up active calls
-    Object.values(activeCallsRef.current).forEach((call: any) => {
-      try { call.close() } catch {}
-    })
-    activeCallsRef.current = {}
+  }
 
-    if (peerRef.current) {
-      peerRef.current.destroy()
-      peerRef.current = null
-    }
+  const cleanupWebRTC = () => {
+    stopRecording()
+    audioQueueRef.current = []
+    isPlayingRef.current = false
   }
 
   const formatCountdown = (secs: number) => {
