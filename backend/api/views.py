@@ -1237,3 +1237,47 @@ def api_user_upload(request):
     # Generate full URL
     url = request.build_absolute_uri(settings.MEDIA_URL + path)
     return Response({'url': url})
+
+
+@api_view(['POST'])
+def api_testimony_media_upload(request):
+    if not request.user.is_authenticated:
+        return Response({'detail': 'Not authenticated'}, status=401)
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return Response({'detail': 'No file uploaded'}, status=400)
+
+    # Validate file size (max 30MB)
+    if uploaded_file.size > 30 * 1024 * 1024:
+        return Response({'detail': 'File size exceeds the 30MB limit.'}, status=400)
+
+    ext = os.path.splitext(uploaded_file.name)[1].lower()
+    
+    # Validate format and choose folder
+    if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+        folder = 'testimony_images'
+        from PIL import Image
+        try:
+            img = Image.open(uploaded_file)
+            img.verify()
+            uploaded_file.seek(0)
+        except Exception:
+            return Response({'detail': 'Invalid image file.'}, status=400)
+            
+    elif ext in ['.mp4', '.mov', '.avi', '.webm', '.mkv']:
+        folder = 'testimony_videos'
+        
+    elif ext in ['.mp3', '.wav', '.m4a', '.webm', '.ogg', '.aac']:
+        folder = 'testimony_audio'
+        
+    else:
+        return Response({'detail': f'Unsupported file extension: {ext}'}, status=400)
+
+    # Generate unique filename
+    filename = f"{uuid.uuid4()}{ext}"
+    path = default_storage.save(os.path.join(folder, filename), ContentFile(uploaded_file.read()))
+
+    # Generate full URL
+    url = request.build_absolute_uri(settings.MEDIA_URL + path)
+    return Response({'url': url})

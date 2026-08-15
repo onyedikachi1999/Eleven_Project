@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { testimonyApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { Search, PenLine, Play, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles } from 'lucide-react'
+import { Search, PenLine, Play, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles, Upload, X, ImageIcon, Video, Mic } from 'lucide-react'
 import { TestimonyCard, TestimonyDetailModal, categoryIcons, categoryColors } from '@/components/TestimonyCardShared'
 
 const categories = ['all', 'healing', 'finance', 'family', 'career', 'deliverance', 'general']
@@ -20,7 +20,20 @@ const sorts = [
   { value: 'mostPrayed', label: 'Most Prayed' },
 ]
 
+const getMediaDuration = (file: File): Promise<number> => {
+  return new Promise((resolve) => {
+    const element = document.createElement(file.type.startsWith('video') ? 'video' : 'audio')
+    element.preload = 'metadata'
+    element.src = URL.createObjectURL(file)
+    element.onloadedmetadata = () => {
+      URL.revokeObjectURL(element.src)
+      resolve(element.duration)
+    }
+    element.onerror = () => resolve(0)
+  })
+}
 
+const typeIcons: Record<string, any> = { text: PenLine, video: Video, audio: Mic, image: ImageIcon }
 
 function SubmitTestimonyModal({ onSuccess }: { onSuccess: () => void }) {
   const { isAuthenticated } = useAuth()
@@ -31,23 +44,80 @@ function SubmitTestimonyModal({ onSuccess }: { onSuccess: () => void }) {
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const clearFile = () => {
+    setSelectedFile(null)
+    if (filePreview) URL.revokeObjectURL(filePreview)
+    setFilePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleTypeChange = (newType: string) => {
+    setType(newType)
+    clearFile()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (type === 'image' && !file.type.startsWith('image/')) {
+      toast.error('Please select an image file.'); return
+    }
+    if (type === 'video' && !file.type.startsWith('video/')) {
+      toast.error('Please select a video file.'); return
+    }
+    if (type === 'audio' && !file.type.startsWith('audio/')) {
+      toast.error('Please select an audio file.'); return
+    }
+
+    if (file.type.startsWith('video/')) {
+      if (file.size > 20 * 1024 * 1024) { toast.error('Video must be under 20MB.'); return }
+      const duration = await getMediaDuration(file)
+      if (duration > 15.5) { toast.error('Video duration cannot exceed 15 seconds.'); return }
+    } else if (file.type.startsWith('audio/')) {
+      if (file.size > 10 * 1024 * 1024) { toast.error('Audio must be under 10MB.'); return }
+      const duration = await getMediaDuration(file)
+      if (duration > 60.5) { toast.error('Audio duration cannot exceed 60 seconds.'); return }
+    } else if (file.type.startsWith('image/')) {
+      if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB.'); return }
+    }
+
+    setSelectedFile(file)
+    setFilePreview(URL.createObjectURL(file))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isAuthenticated) { toast('Please sign in first'); return }
     if (!title.trim() || !content.trim()) return
+    if (type !== 'text' && !selectedFile) {
+      toast.error(`Please select a ${type} file to upload.`); return
+    }
     setSubmitting(true)
     try {
-      await testimonyApi.create({ title: title.trim(), content: content.trim(), category, type, is_anonymous: isAnonymous })
+      let mediaUrl = ''
+      if (selectedFile) {
+        const uploadRes = await testimonyApi.uploadMedia(selectedFile)
+        mediaUrl = uploadRes.url
+      }
+      await testimonyApi.create({
+        title: title.trim(), content: content.trim(), category, type,
+        media_url: mediaUrl || undefined, is_anonymous: isAnonymous
+      })
       setOpen(false); setTitle(''); setContent(''); setCategory('general'); setType('text'); setIsAnonymous(false)
+      clearFile()
       toast('Testimony submitted! It will be reviewed shortly.')
       onSuccess()
-    } catch (err: any) { toast.error(err.message) }
+    } catch (err: any) { toast.error(err.message || 'Failed to submit testimony') }
     setSubmitting(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) clearFile() }}>
       <DialogTrigger asChild>
         <Button size="sm" className="rounded-full font-medium text-xs" style={{ background: 'var(--eleven-accent)' }}><PenLine size={14} className="mr-1.5" />Share Yours</Button>
       </DialogTrigger>
@@ -56,10 +126,68 @@ function SubmitTestimonyModal({ onSuccess }: { onSuccess: () => void }) {
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div><Label>Title</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Give your testimony a title" required minLength={3} className="mt-1" /></div>
           <div><Label>Category</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{categories.filter(c => c !== 'all').map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label>Type</Label><div className="flex gap-2 mt-1">{['text', 'video', 'audio'].map(t => <button key={t} type="button" onClick={() => setType(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${type === t ? 'text-white' : 'bg-gray-100 hover:bg-gray-200'}`} style={type === t ? { background: 'var(--eleven-accent)' } : {}}>{t}</button>)}</div></div>
+          <div>
+            <Label>Type</Label>
+            <div className="flex gap-2 mt-1">
+              {['text', 'video', 'audio', 'image'].map(t => {
+                const Icon = typeIcons[t]
+                return (
+                  <button key={t} type="button" onClick={() => handleTypeChange(t)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${type === t ? 'text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    style={type === t ? { background: 'var(--eleven-accent)' } : {}}>
+                    <Icon size={13} />{t}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {type !== 'text' && (
+            <div className="rounded-xl border-2 border-dashed p-4 space-y-2 transition-colors"
+              style={{ borderColor: selectedFile ? 'var(--eleven-accent)' : '#d1d5db', background: selectedFile ? 'rgba(var(--eleven-accent-rgb, 139,92,246), 0.04)' : 'transparent' }}>
+              <div className="flex items-center gap-2">
+                <Upload size={15} style={{ color: 'var(--eleven-text-secondary)' }} />
+                <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--eleven-text-secondary)' }}>
+                  Upload {type}
+                </Label>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={type === 'image' ? 'image/*' : type === 'video' ? 'video/*' : 'audio/*'}
+                onChange={handleFileChange}
+                className="text-xs w-full cursor-pointer file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 file:cursor-pointer file:transition-colors"
+              />
+              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--eleven-text-muted)' }}>
+                {type === 'video' && '📹 Max duration: 15 seconds · Max size: 20MB · MP4, MOV, WEBM'}
+                {type === 'audio' && '🎙️ Max duration: 60 seconds · Max size: 10MB · MP3, WAV, M4A, OGG'}
+                {type === 'image' && '📷 Accepted: JPG, PNG, GIF, WEBP · Max size: 5MB'}
+              </p>
+              {filePreview && (
+                <div className="mt-2 relative inline-block">
+                  {type === 'image' && (
+                    <img src={filePreview} alt="Preview" className="max-h-36 rounded-lg border object-cover" style={{ borderColor: 'var(--eleven-border)' }} />
+                  )}
+                  {type === 'video' && (
+                    <video src={filePreview} controls className="max-h-36 rounded-lg border" style={{ borderColor: 'var(--eleven-border)' }} />
+                  )}
+                  {type === 'audio' && (
+                    <audio src={filePreview} controls className="w-full max-w-xs mt-1" />
+                  )}
+                  <button type="button" onClick={clearFile}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors text-xs">
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div><Label>Your Story</Label><Textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Share what God has done in your life..." required minLength={10} rows={5} className="mt-1 resize-y" /></div>
           <div className="flex items-center gap-2"><Checkbox id="anon" checked={isAnonymous} onCheckedChange={v => setIsAnonymous(v as boolean)} /><Label htmlFor="anon" className="text-sm font-normal cursor-pointer">Post anonymously</Label></div>
-          <Button type="submit" className="w-full rounded-lg font-semibold" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>{submitting ? 'Submitting...' : 'Submit for Review'}</Button>
+          <Button type="submit" className="w-full rounded-lg font-semibold" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>
+            {submitting ? (selectedFile ? 'Uploading & Submitting...' : 'Submitting...') : 'Submit for Review'}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

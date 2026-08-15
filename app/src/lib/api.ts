@@ -110,6 +110,11 @@ export const testimonyApi = {
   },
   getById: (id: number) => fetchApi(`/testimonies/${id}/`),
   create: (data: Record<string, unknown>) => fetchApi('/testimonies/', { method: 'POST', body: JSON.stringify(data) }),
+  uploadMedia: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return fetchApi('/testimonies/upload/', { method: 'POST', body: formData })
+  },
   amen: (id: number) => fetchApi(`/testimonies/${id}/amen/`, { method: 'POST' }),
   incrementView: (id: number) => fetchApi(`/testimonies/${id}/increment_view/`, { method: 'POST' }),
   pending: () => fetchApi('/testimonies/pending/'),

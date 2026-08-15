@@ -41,6 +41,7 @@ TYPE_CHOICES = [
     ('text', 'Text'),
     ('video', 'Video'),
     ('audio', 'Audio'),
+    ('image', 'Image'),
 ]
 
 STATUS_CHOICES = [
