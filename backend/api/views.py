@@ -397,8 +397,8 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         session = self.get_object()
         from django.utils import timezone
         
-        # Check if user is moderator/host or admin
-        is_host = (request.user == session.host or request.user.role == 'admin')
+        # Check if user is moderator/host
+        is_host = (request.user == session.host)
         
         if not is_host:
             # Check if session has not started yet
@@ -475,8 +475,8 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Authentication required'}, status=401)
         session = self.get_object()
         
-        # Check if user is moderator/host or admin
-        is_host = (request.user == session.host or request.user.role == 'admin')
+        # Check if user is moderator/host
+        is_host = (request.user == session.host)
         
         if not is_host:
             # Check if session has not started yet
@@ -527,7 +527,7 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         from .models import LiveRoomParticipant
         
         # Check if user leaving is host/moderator
-        is_host = (request.user == session.host or request.user.role == 'admin')
+        is_host = (request.user == session.host)
         
         # Delete participant record
         LiveRoomParticipant.objects.filter(session=session, user=request.user).delete()
@@ -643,7 +643,7 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         
         # Verify user is moderator or co-host
         from .models import LiveRoomParticipant
-        is_host = (request.user == session.host or request.user.role == 'admin')
+        is_host = (request.user == session.host)
         is_co_moderator = LiveRoomParticipant.objects.filter(session=session, user=request.user, is_co_moderator=True).exists()
         if not is_host and not is_co_moderator:
             return Response({'detail': 'Only moderators or co-hosts can broadcast audio'}, status=403)
@@ -691,7 +691,7 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated:
             return Response({'detail': 'Authentication required'}, status=401)
         session = self.get_object()
-        if request.user != session.host and request.user.role != 'admin':
+        if request.user != session.host:
             return Response({'detail': 'Only the moderator can assign co-moderators'}, status=403)
             
         target_user_id = request.data.get('user_id')

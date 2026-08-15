@@ -74,8 +74,7 @@ export default function LiveAudioRoomPage() {
   // Compute Moderator role
   const isHostSpeaker = Boolean(
     session?.is_host || 
-    user?.role === 'admin' || 
-    user?.username === session?.host_name ||
+    (user && session && user.id === session.host_id) ||
     participants.find(p => p.user_id === user?.id)?.isCoModerator
   )
   isModeratorRef.current = isHostSpeaker
@@ -97,7 +96,7 @@ export default function LiveAudioRoomPage() {
       }
       const data = mockSessions[id] || mockSessions.s1
       
-      const isHost = (user?.role === 'admin' || user?.id === data.host_id)
+      const isHost = (user?.id === data.host_id)
       if (!isHost && new Date(data.scheduled_at) > new Date()) {
         toast.error("This live session has not started yet. Please check back at the scheduled start time.")
         navigate('/joint-prayer')
@@ -117,7 +116,7 @@ export default function LiveAudioRoomPage() {
         setSession(data)
         setTimeLeft((data.duration || 30) * 60)
         // If owner/host, enable speaking
-        if (user?.role === 'admin' || user?.id === data.host_id) {
+        if (user?.id === data.host_id) {
           setIsMuted(false)
         }
       })
