@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
-    avatar = models.URLField(blank=True, null=True)
+    avatar = models.URLField(max_length=500, blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     role = models.CharField(max_length=10, choices=[('user', 'User'), ('admin', 'Admin')], default='user')
     subscription_plan = models.CharField(

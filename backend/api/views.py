@@ -1236,7 +1236,13 @@ def api_user_upload(request):
 
     # Generate full URL
     url = request.build_absolute_uri(settings.MEDIA_URL + path)
-    return Response({'url': url})
+
+    # Automatically save avatar to user model immediately
+    request.user.avatar = url
+    request.user.save()
+
+    from .serializers import UserSerializer
+    return Response({'url': url, 'user': UserSerializer(request.user).data})
 
 
 @api_view(['POST'])

@@ -97,7 +97,8 @@ export default function Dashboard() {
     try {
       const res = await authApi.uploadAvatar(file)
       setAvatarUrl(res.url)
-      toast.success('Avatar uploaded successfully!')
+      refresh()
+      toast.success('Avatar updated successfully!')
     } catch (err: any) {
       toast.error(err.message || 'Avatar upload failed')
     } finally {
@@ -138,10 +139,30 @@ export default function Dashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="rounded-2xl p-6 sm:p-8 mb-8" style={{ background: 'var(--eleven-surface-elevated)' }}>
         <div className="flex flex-col sm:flex-row items-start gap-4">
-          <Avatar className="w-20 h-20">
-            <AvatarImage src={user.avatar ?? undefined} />
-            <AvatarFallback className="text-2xl font-display font-bold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
+          <div className="relative group w-20 h-20 shrink-0">
+            <Avatar className="w-20 h-20 ring-2 ring-stone-200 shadow-sm">
+              <AvatarImage src={user.avatar || undefined} />
+              <AvatarFallback className="text-2xl font-display font-bold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
+                {(user.name ?? 'U').charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <label className="absolute inset-0 rounded-full bg-black/45 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md" title="Change Avatar">
+              <Camera size={18} />
+              <span className="text-[9px] font-semibold mt-0.5">Change</span>
+              <input 
+                type="file" 
+                accept="image/jpeg,image/png,image/gif,image/webp" 
+                className="hidden" 
+                onChange={handleAvatarFileChange} 
+                disabled={uploadingAvatar}
+              />
+            </label>
+            {uploadingAvatar && (
+              <div className="absolute inset-0 rounded-full bg-white/75 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-[#c4956a] border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
           <div className="flex-1 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -242,7 +263,7 @@ export default function Dashboard() {
                 <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Avatar Image</Label>
                 <div className="relative group w-28 h-28 rounded-full overflow-hidden border-2 border-stone-200">
                   <Avatar className="w-full h-full">
-                    <AvatarImage src={avatarUrl ?? undefined} />
+                    <AvatarImage src={avatarUrl || undefined} />
                     <AvatarFallback className="text-3xl font-display font-bold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
                       {firstName ? firstName.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
