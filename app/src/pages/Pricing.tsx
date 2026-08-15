@@ -42,7 +42,7 @@ const plans: Plan[] = [
     borderColor: 'var(--eleven-border)',
     accentColor: '#E8E4DE',
     features: [
-      { name: 'Access to Testimony Hub', included: true },
+      { name: 'Access to Testimony Hub (full access)', included: true },
       { name: 'Share your testimonies (Text, Audio, Video & Image)', included: true },
       { name: 'React & stand in prayer on testimonies', included: true },
       { name: 'Join public prayer circles', included: true },
