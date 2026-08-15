@@ -14,7 +14,6 @@ router.register(r'users', views.UserViewSet, basename='user')
 router.register(r'slides', views.SlideViewSet, basename='slide')
 
 urlpatterns = [
-    path('', include(router.urls)),
     path('auth/csrf/', views.api_csrf_token, name='api_csrf_token'),
     path('auth/login/', api_login, name='api_login'),
     path('auth/register/', api_register, name='api_register'),
@@ -27,4 +26,5 @@ urlpatterns = [
     path('users/upload/', views.api_user_upload, name='user_upload'),
     path('testimonies/upload/', views.api_testimony_media_upload, name='testimony_upload'),
     path('prayers/answered/', views.PrayerViewSet.as_view({'get': 'answered'}), name='prayers_answered'),
+    path('', include(router.urls)),
 ]
