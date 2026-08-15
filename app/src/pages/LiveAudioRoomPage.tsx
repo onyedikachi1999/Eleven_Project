@@ -64,12 +64,26 @@ export default function LiveAudioRoomPage() {
 
   // HTTP Live Audio Chunks Refs & State
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const sequenceCounterRef = useRef<number>(0)
+  const sequenceCounterRef = useRef<number>(Date.now())
   const lastSequenceRef = useRef<number>(-1)
   const audioQueueRef = useRef<string[]>([])
   const isPlayingRef = useRef<boolean>(false)
   const isDeafenedRef = useRef<boolean>(false)
+  const isMutedRef = useRef<boolean>(true)
   const hasLeftRef = useRef<boolean>(false)
+  const liveEndedNotifiedRef = useRef<boolean>(false)
+  const sequenceInitializedRef = useRef<boolean>(false)
+  const userIdRef = useRef<number | undefined>(undefined)
+  
+  // Dynamic audio controls
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+  const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false)
+  const isAutoplayBlockedRef = useRef<boolean>(false)
+
+  // Sync autoplay block to ref
+  useEffect(() => {
+    isAutoplayBlockedRef.current = isAutoplayBlocked
+  }, [isAutoplayBlocked])
 
   // Compute Moderator role
   const isHostSpeaker = Boolean(
@@ -78,11 +92,49 @@ export default function LiveAudioRoomPage() {
     participants.find(p => p.user_id === user?.id)?.isCoModerator
   )
   isModeratorRef.current = isHostSpeaker
+  isMutedRef.current = isMuted
+  userIdRef.current = user?.id
 
   // Sync deafened state to ref
   useEffect(() => {
     isDeafenedRef.current = isDeafened
+    if (currentAudioRef.current) {
+      currentAudioRef.current.volume = isDeafened ? 0 : 1
+    }
   }, [isDeafened])
+
+  const getSessionTimeLeft = (sessionData: any) => {
+    if (!sessionData?.scheduled_at) {
+      return (sessionData?.duration || 30) * 60
+    }
+
+    const start = new Date(sessionData.scheduled_at).getTime()
+    const durationMs = (sessionData.duration || 30) * 60 * 1000
+    const end = start + durationMs
+
+    return Math.max(0, Math.floor((end - Date.now()) / 1000))
+  }
+
+  const initializeAudioSequence = async (sessionId: string) => {
+    if (sessionId.startsWith('s') || sequenceInitializedRef.current) return
+
+    sequenceInitializedRef.current = true
+
+    try {
+      const data = await scheduleApi.syncRoom(sessionId, 0, 0, -1)
+      if (!Array.isArray(data?.audio_chunks) || data.audio_chunks.length === 0) return
+
+      const latestSequence = Math.max(...data.audio_chunks.map((chunk: any) => chunk.sequence))
+
+      // Speakers must continue from the latest uploaded sequence after refresh/re-entry.
+      sequenceCounterRef.current = latestSequence + 1
+
+      // Listeners join the live edge instead of replaying stale chunks from earlier in the room.
+      lastSequenceRef.current = latestSequence
+    } catch (err) {
+      console.warn('Failed to initialize live audio sequence:', err)
+    }
+  }
 
   // Fetch session details on load
   useEffect(() => {
@@ -104,7 +156,7 @@ export default function LiveAudioRoomPage() {
       }
 
       setSession(data)
-      setTimeLeft(data.duration * 60)
+      setTimeLeft(getSessionTimeLeft(data))
       setLoading(false)
       return
     }
@@ -112,9 +164,10 @@ export default function LiveAudioRoomPage() {
     setLoading(true)
 
     scheduleApi.get(id)
-      .then(data => {
+      .then(async data => {
+        await initializeAudioSequence(id)
         setSession(data)
-        setTimeLeft((data.duration || 30) * 60)
+        setTimeLeft(getSessionTimeLeft(data))
         // If owner/host, enable speaking
         if (user?.id === data.host_id) {
           setIsMuted(false)
@@ -193,9 +246,16 @@ export default function LiveAudioRoomPage() {
       return
     }
 
+    if (isModeratorRef.current) {
+      audioQueueRef.current = []
+      isPlayingRef.current = false
+      return
+    }
+
     isPlayingRef.current = true
     const nextUrl = audioQueueRef.current.shift()!
     const audio = new Audio(nextUrl)
+    currentAudioRef.current = audio
     audio.volume = isDeafenedRef.current ? 0 : 1
 
     audio.onended = () => {
@@ -208,26 +268,38 @@ export default function LiveAudioRoomPage() {
     }
 
     audio.play().catch(err => {
-      console.warn('Audio play autoplay blocked, skipping or retrying.', err)
-      playNextChunk()
+      console.warn('Audio play autoplay blocked:', err)
+      // Put the chunk back at the beginning of the queue so we don't lose it.
+      audioQueueRef.current.unshift(nextUrl)
+      isPlayingRef.current = false
+      setIsAutoplayBlocked(true)
     })
+  }
+
+  const unlockAudioPlayback = () => {
+    setIsAutoplayBlocked(false)
+    isAutoplayBlockedRef.current = false
+    if (!isPlayingRef.current) {
+      playNextChunk()
+    }
   }
 
   // 3. Join room, start Polling (Heartbeat & Sync) Loop
   useEffect(() => {
     if (loading || !session || !id) return
 
-    // Sync loop & Countdown Timer
+    // Sync loop & countdown timer. Always derive remaining time from the session
+    // timestamps so refresh/re-entry cannot restart the room clock.
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          toast.info('The live prayer session has concluded. Thank you for praying together!')
-          navigate('/joint-prayer')
-          return 0
-        }
-        return prev - 1
-      })
+      const remaining = getSessionTimeLeft(session)
+      setTimeLeft(remaining)
+
+      if (remaining <= 0 && !liveEndedNotifiedRef.current) {
+        liveEndedNotifiedRef.current = true
+        clearInterval(timer)
+        toast.info('The live prayer session has concluded. Thank you for praying together!')
+        navigate('/joint-prayer')
+      }
     }, 1000)
 
     // 2-second Sync loop
@@ -283,14 +355,14 @@ export default function LiveAudioRoomPage() {
             setParticipants(mapped)
 
             // Dynamic Co-Moderator promotion check for current user
-            const currentParticipant = mapped.find(p => p.user_id === user?.id)
-            if (currentParticipant && currentParticipant.isCoModerator && isMuted) {
+            const currentParticipant = mapped.find(p => p.user_id === userIdRef.current)
+            if (currentParticipant && currentParticipant.isCoModerator && isMutedRef.current) {
               toast.success('You have been promoted to Co-Host. You can now unmute and speak!')
             }
           }
 
           // Sync Audio Chunks (Only for listeners, speakers don't need to listen to their own voice)
-          if (!isHostSpeaker && Array.isArray(data.audio_chunks) && data.audio_chunks.length > 0) {
+          if (!isModeratorRef.current && !isDeafenedRef.current && Array.isArray(data.audio_chunks) && data.audio_chunks.length > 0) {
             // Sort ascending by sequence
             const sortedChunks = [...data.audio_chunks].sort((a, b) => a.sequence - b.sequence)
             const newUrls = sortedChunks.map(c => c.url)
@@ -351,7 +423,7 @@ export default function LiveAudioRoomPage() {
 
     // Audio Visualizer simulator loop
     const visualizerInterval = setInterval(() => {
-      if (isHostSpeaker && !isMuted) {
+      if (isModeratorRef.current && !isMutedRef.current) {
         setAudioLevel(Math.floor(Math.random() * 55) + 35)
       } else {
         setAudioLevel(12)
@@ -362,12 +434,37 @@ export default function LiveAudioRoomPage() {
       clearInterval(timer)
       clearInterval(syncInterval)
       clearInterval(visualizerInterval)
+      
+      // Stop audio playback immediately and clear queue
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause()
+        currentAudioRef.current.src = ''
+        currentAudioRef.current = null
+      }
+      audioQueueRef.current = []
+      isPlayingRef.current = false
+      
       // Call leave endpoint on exit if not already left
       if (!hasLeftRef.current && id) {
         scheduleApi.leaveRoom(id).catch(() => {})
       }
     }
-  }, [loading, session, id, user, isHostSpeaker, isMuted])
+  }, [loading, session, id, navigate])
+
+  // Autoplay Unlock Effect
+  useEffect(() => {
+    const unlock = () => {
+      if (isAutoplayBlockedRef.current) {
+        unlockAudioPlayback()
+      }
+    }
+    window.addEventListener('click', unlock)
+    window.addEventListener('touchstart', unlock)
+    return () => {
+      window.removeEventListener('click', unlock)
+      window.removeEventListener('touchstart', unlock)
+    }
+  }, [])
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -380,12 +477,6 @@ export default function LiveAudioRoomPage() {
       localStreamRef.current.getTracks().forEach(t => t.stop())
       localStreamRef.current = null
     }
-  }
-
-  const cleanupWebRTC = () => {
-    stopRecording()
-    audioQueueRef.current = []
-    isPlayingRef.current = false
   }
 
   const formatCountdown = (secs: number) => {
@@ -553,6 +644,17 @@ export default function LiveAudioRoomPage() {
 
       {/* ── Main Stage Area ── */}
       <div className="relative flex-1 p-6 overflow-y-auto flex flex-col items-center justify-between min-h-[300px] bg-gradient-to-b from-[#161c27] to-[#0f141c]">
+        {isAutoplayBlocked && (
+          <div className="absolute top-4 left-4 right-4 bg-amber-500/20 border border-amber-500/35 rounded-xl p-3 flex items-center justify-between gap-3 z-50 animate-bounce">
+            <div className="flex items-center gap-2 text-amber-200 text-left">
+              <VolumeX size={15} className="animate-pulse text-amber-400 shrink-0" />
+              <span className="text-[11px] font-medium leading-relaxed">Audio is blocked by your browser. Click anywhere to unmute and listen live.</span>
+            </div>
+            <Button size="sm" onClick={unlockAudioPlayback} className="h-7 rounded-lg text-[10px] py-1 px-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold shrink-0">
+              Unmute
+            </Button>
+          </div>
+        )}
         {/* Floating Reaction Container */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
           {reactions.map(r => (
@@ -820,8 +922,10 @@ export default function LiveAudioRoomPage() {
               onClick={async () => {
                 setShowExitWarning(false)
                 hasLeftRef.current = true
+
+                if (!id) return
                 
-                if (id && id.startsWith('s')) {
+                if (id.startsWith('s')) {
                   const hasCoMod = participants.some(p => p.isCoModerator && p.user_id !== session?.host_id)
                   if (hasCoMod) {
                     const firstCoMod = participants.find(p => p.isCoModerator && p.user_id !== session?.host_id)
