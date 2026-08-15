@@ -1218,8 +1218,8 @@ def api_user_upload(request):
 
     # Check extension
     ext = os.path.splitext(uploaded_file.name)[1].lower()
-    if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
-        return Response({'detail': 'Unsupported image type. Only JPG, PNG, GIF are allowed.'}, status=400)
+    if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+        return Response({'detail': 'Unsupported image type. Only JPG, PNG, GIF, WEBP are allowed.'}, status=400)
 
     # Verify via PIL
     from PIL import Image

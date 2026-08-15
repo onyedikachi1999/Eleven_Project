@@ -85,6 +85,10 @@ export const authApi = {
     const formData = new FormData();
     formData.append('file', file);
     const headers: Record<string, string> = {};
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      headers['Authorization'] = `Token ${token}`;
+    }
     if (csrfToken) {
       headers['X-CSRFToken'] = csrfToken;
     }
