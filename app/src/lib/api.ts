@@ -8,7 +8,7 @@ async function fetchApi(path: string, options: RequestInit = {}) {
   const method = (options.method ?? 'GET').toUpperCase();
   
   const headers = new Headers(options.headers);
-  if (!headers.has('Content-Type')) {
+  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 
