@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 40 33% 97%;
+    --background: 220 33% 97%;
     --foreground: 0 0% 10%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 10%;
@@ -34,9 +34,9 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Custom ELEVEN tokens */
-    --eleven-bg: #FAF9F6;
+    --eleven-bg: #F0F2F5;
     --eleven-surface: #FFFFFF;
-    --eleven-surface-elevated: #F5F3EF;
+    --eleven-surface-elevated: #EAECEF;
     --eleven-border: #E8E4DE;
     --eleven-border-strong: #D4CFC7;
     --eleven-text: #1A1A1A;
