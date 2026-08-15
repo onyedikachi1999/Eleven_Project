@@ -28,7 +28,7 @@ export default function Footer() {
               <ElevenLogo height={52} />
             </div>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--eleven-text-muted)' }}>
-              A global community of faith, testimonies, and prayer.
+              A global community for faith, testimonies, and prayer.
             </p>
           </div>
 
