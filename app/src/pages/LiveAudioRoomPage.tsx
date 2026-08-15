@@ -84,6 +84,29 @@ export default function LiveAudioRoomPage() {
     isDeafenedRef.current = isDeafened
   }, [isDeafened])
 
+  // Fetch session details on load
+  useEffect(() => {
+    if (!id) return
+    setLoading(true)
+
+    scheduleApi.get(id)
+      .then(data => {
+        setSession(data)
+        setTimeLeft((data.duration || 30) * 60)
+        // If owner/host, enable speaking
+        if (user?.role === 'admin' || user?.id === data.host_id) {
+          setIsMuted(false)
+        }
+      })
+      .catch(() => {
+        toast.error('Failed to connect to live session')
+        navigate('/joint-prayer')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [id, user, navigate])
+
   // Join room on load
   useEffect(() => {
     if (loading || !session || !id) return
