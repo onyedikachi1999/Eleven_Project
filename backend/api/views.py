@@ -393,6 +393,21 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only Premium Watchers can go live.")
         serializer.save(host=self.request.user)
 
+    def retrieve(self, request, *args, **kwargs):
+        session = self.get_object()
+        from django.utils import timezone
+        
+        # Check if user is moderator/host or admin
+        is_host = (request.user == session.host or request.user.role == 'admin')
+        
+        if not is_host:
+            # Check if session has not started yet
+            if not session.is_live and timezone.now() < session.scheduled_at:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("This live session has not started yet. Please check back at the scheduled start time.")
+                
+        return super().retrieve(request, *args, **kwargs)
+
     @action(detail=False, methods=['get'])
     def upcoming(self, request):
         from django.utils import timezone
@@ -459,6 +474,18 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated:
             return Response({'detail': 'Authentication required'}, status=401)
         session = self.get_object()
+        
+        # Check if user is moderator/host or admin
+        is_host = (request.user == session.host or request.user.role == 'admin')
+        
+        if not is_host:
+            # Check if session has not started yet
+            from django.utils import timezone
+            if not session.is_live and timezone.now() < session.scheduled_at:
+                return Response({
+                    'detail': 'This live session has not started yet. Please check back at the scheduled start time.'
+                }, status=403)
+                
         from .models import LiveRoomParticipant
         peer_id = request.data.get('peer_id')
         participant, created = LiveRoomParticipant.objects.get_or_create(session=session, user=request.user)

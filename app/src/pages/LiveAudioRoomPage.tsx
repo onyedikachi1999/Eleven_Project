@@ -91,11 +91,19 @@ export default function LiveAudioRoomPage() {
 
     if (id.startsWith('s')) {
       const mockSessions: Record<string, any> = {
-        s1: { id: 's1', title: 'Morning Grace Prayer Watch', description: 'Starting the day in worship, intercession, and personal prayer.', duration: 30, host_name: 'Pastor David', is_host: false },
-        s2: { id: 's2', title: 'Healing & Deliverance Fellowship', description: 'Gathering to pray for the sick, brokenhearted, and needy.', duration: 45, host_name: 'Sister Sarah', is_host: false },
-        s3: { id: 's3', title: 'Midnight Breakthrough Vigil', description: 'Late-night prayer watch standing in agreement for miracles.', duration: 60, host_name: 'Brother John', is_host: false },
+        s1: { id: 's1', title: 'Morning Grace Prayer Watch', description: 'Starting the day in worship, intercession, and personal prayer.', duration: 30, host_name: 'Pastor David', host_id: 999, scheduled_at: new Date().toISOString() },
+        s2: { id: 's2', title: 'Healing & Deliverance Fellowship', description: 'Gathering to pray for the sick, brokenhearted, and needy.', duration: 45, host_name: 'Sister Sarah', host_id: 998, scheduled_at: new Date().toISOString() },
+        s3: { id: 's3', title: 'Midnight Breakthrough Vigil', description: 'Late-night prayer watch standing in agreement for miracles.', duration: 60, host_name: 'Brother John', host_id: 997, scheduled_at: new Date(Date.now() + 14400000).toISOString() },
       }
       const data = mockSessions[id] || mockSessions.s1
+      
+      const isHost = (user?.role === 'admin' || user?.id === data.host_id)
+      if (!isHost && new Date(data.scheduled_at) > new Date()) {
+        toast.error("This live session has not started yet. Please check back at the scheduled start time.")
+        navigate('/joint-prayer')
+        return
+      }
+
       setSession(data)
       setTimeLeft(data.duration * 60)
       setLoading(false)
