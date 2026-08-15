@@ -87,6 +87,20 @@ export default function LiveAudioRoomPage() {
   // Fetch session details on load
   useEffect(() => {
     if (!id) return
+
+    if (id.startsWith('s')) {
+      const mockSessions: Record<string, any> = {
+        s1: { id: 's1', title: 'Morning Grace Prayer Watch', description: 'Starting the day in worship, intercession, and personal prayer.', duration: 30, host_name: 'Pastor David', is_host: false },
+        s2: { id: 's2', title: 'Healing & Deliverance Fellowship', description: 'Gathering to pray for the sick, brokenhearted, and needy.', duration: 45, host_name: 'Sister Sarah', is_host: false },
+        s3: { id: 's3', title: 'Midnight Breakthrough Vigil', description: 'Late-night prayer watch standing in agreement for miracles.', duration: 60, host_name: 'Brother John', is_host: false },
+      }
+      const data = mockSessions[id] || mockSessions.s1
+      setSession(data)
+      setTimeLeft(data.duration * 60)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
 
     scheduleApi.get(id)
@@ -109,13 +123,13 @@ export default function LiveAudioRoomPage() {
 
   // Join room on load
   useEffect(() => {
-    if (loading || !session || !id) return
+    if (loading || !session || !id || id.startsWith('s')) return
     scheduleApi.joinRoom(id).catch(() => {})
   }, [loading, session, id])
 
   // 1. Audio Recording Loop for Host/Moderator
   useEffect(() => {
-    if (loading || !session || !id) return
+    if (loading || !session || !id || id.startsWith('s')) return
 
     stopRecording()
 
@@ -210,6 +224,31 @@ export default function LiveAudioRoomPage() {
 
     // 2-second Sync loop
     const syncInterval = setInterval(() => {
+      if (id.startsWith('s')) {
+        // Mock simulation behavior:
+        setListenerCount(prev => Math.max(10, prev + (Math.random() > 0.5 ? 1 : -1)))
+        
+        // Add random mock message occasionally
+        if (Math.random() > 0.7) {
+          const names = ['Sarah', 'David', 'James', 'Grace', 'Emmanuel', 'Priscilla']
+          const texts = ['Amen! 🙏', 'Praying with you all.', 'Praise God!', 'Mercy Lord.', 'Standing in agreement.']
+          const randomName = names[Math.floor(Math.random() * names.length)]
+          const randomText = texts[Math.floor(Math.random() * texts.length)]
+          
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Math.random().toString(),
+              user: randomName,
+              text: randomText,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isAmen: randomText.includes('Amen')
+            }
+          ])
+        }
+        return
+      }
+
       // 1. Send Heartbeat to keep active list correct
       scheduleApi.sendHeartbeat(id)
         .then(res => {
@@ -371,6 +410,21 @@ export default function LiveAudioRoomPage() {
 
   const sendReaction = (emoji: string, label: string) => {
     if (!id) return
+    
+    if (id.startsWith('s')) {
+      const newReaction: FloatingReaction = {
+        id: Date.now() + Math.random(),
+        emoji,
+        label,
+        x: Math.floor(Math.random() * 70) + 15,
+      }
+      setReactions(prev => [...prev, newReaction])
+      setTimeout(() => {
+        setReactions(prev => prev.filter(r => r.id !== newReaction.id))
+      }, 2200)
+      return
+    }
+
     // Broadcast reaction to server
     scheduleApi.sendLiveReaction(id, emoji, label)
       .then(res => {
@@ -395,6 +449,18 @@ export default function LiveAudioRoomPage() {
 
     const text = chatInput.trim()
     setChatInput('')
+
+    if (id.startsWith('s')) {
+      const newMsg: ChatMessage = {
+        id: Math.random().toString(),
+        user: user?.name || user?.username || 'Me',
+        text: text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isAmen: text.toLowerCase().includes('amen')
+      }
+      setMessages(prev => [...prev, newMsg])
+      return
+    }
 
     // Send message to server
     scheduleApi.sendLiveMessage(id, text)
