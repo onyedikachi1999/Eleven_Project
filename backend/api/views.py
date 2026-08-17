@@ -722,30 +722,47 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         from django.core.files.base import ContentFile
         from django.conf import settings
         
-        # Save file to default storage
-        content_type = uploaded_file.content_type or ''
-        ext = '.webm' if 'webm' in content_type else ('.mp4' if 'mp4' in content_type else '.webm')
-        filename = f"{session.id}_{sequence}_{uuid.uuid4()}{ext}"
-        path = default_storage.save(os.path.join('live_audio', filename), ContentFile(uploaded_file.read()))
-        url = request.build_absolute_uri(settings.MEDIA_URL + path)
-        if url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
-            url = 'https://' + url[7:]
-        
-        from .models import LiveAudioChunk
-        LiveAudioChunk.objects.create(session=session, sequence=sequence, url=url)
-        
-        # Auto delete old chunks (> 90 seconds old) to save disk space
-        from django.utils import timezone
-        old_chunks = LiveAudioChunk.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(seconds=90))
-        for oc in old_chunks:
+        try:
+            # Read file bytes safely
+            file_bytes = uploaded_file.read()
+            if not file_bytes:
+                return Response({'detail': 'Empty audio payload'}, status=400)
+
+            # Save file to default storage
+            content_type = uploaded_file.content_type or ''
+            ext = '.webm' if 'webm' in content_type else ('.mp4' if 'mp4' in content_type else '.webm')
+            filename = f"{session.id}_{sequence}_{uuid.uuid4()}{ext}"
+            path = default_storage.save(os.path.join('live_audio', filename), ContentFile(file_bytes))
+            url = request.build_absolute_uri(settings.MEDIA_URL + path)
+            if url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
+                url = 'https://' + url[7:]
+            
+            from .models import LiveAudioChunk
+            LiveAudioChunk.objects.create(session=session, sequence=sequence, url=url)
+            
+            # Clean up old chunks safely in background without blocking response
             try:
-                rel_path = oc.url.split(settings.MEDIA_URL)[-1]
-                default_storage.delete(rel_path)
-            except:
+                from django.utils import timezone
+                old_chunks = LiveAudioChunk.objects.filter(
+                    session=session,
+                    created_at__lt=timezone.now() - timezone.timedelta(seconds=90)
+                )
+                for oc in old_chunks:
+                    try:
+                        if settings.MEDIA_URL in oc.url:
+                            rel_path = oc.url.split(settings.MEDIA_URL)[-1]
+                            default_storage.delete(rel_path)
+                    except Exception:
+                        pass
+                old_chunks.delete()
+            except Exception:
                 pass
-        old_chunks.delete()
-        
-        return Response({'status': 'uploaded', 'sequence': sequence, 'url': url})
+            
+            return Response({'status': 'uploaded', 'sequence': sequence, 'url': url})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'detail': f'Server audio processing error: {str(e)}'}, status=500)
 
     @action(detail=True, methods=['post'])
     def toggle_co_moderator(self, request, pk=None):
