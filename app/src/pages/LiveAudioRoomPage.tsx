@@ -166,6 +166,25 @@ class LiveStreamAudioEngine {
   }
 }
 
+// Helper to create a valid silent audio MediaStream for WebRTC peer signaling
+function createSilentAudioStream(): MediaStream {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (AudioCtx) {
+      const ctx = new AudioCtx()
+      const osc = ctx.createOscillator()
+      const dst = ctx.createMediaStreamDestination()
+      const gain = ctx.createGain()
+      gain.gain.value = 0.00001
+      osc.connect(gain)
+      gain.connect(dst)
+      osc.start()
+      return dst.stream
+    }
+  } catch {}
+  return new MediaStream()
+}
+
 export default function LiveAudioRoomPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -173,16 +192,15 @@ export default function LiveAudioRoomPage() {
   
   const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [isMuted, setIsMuted] = useState(true) // Start muted by default
+  const [isMuted, setIsMuted] = useState(true)
   const [isDeafened, setIsDeafened] = useState(false)
-  const [reactions, setReactions] = useState<FloatingReaction[]>([])
+  const [listenerCount, setListenerCount] = useState(1)
+  const [participants, setParticipants] = useState<Participant[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
-  const [listenerCount, setListenerCount] = useState(0)
-  const [audioLevel, setAudioLevel] = useState(12)
+  const [reactions, setReactions] = useState<FloatingReaction[]>([])
   const [activePanel, setActivePanel] = useState<'chat' | 'listeners'>('chat')
-  
-  const [participants, setParticipants] = useState<Participant[]>([])
+  const [audioLevel, setAudioLevel] = useState(0)
   const [showExitWarning, setShowExitWarning] = useState(false)
   const [timeLeft, setTimeLeft] = useState(1800)
   const [roomEndedState, setRoomEndedState] = useState<{
@@ -242,6 +260,15 @@ export default function LiveAudioRoomPage() {
   isModeratorRef.current = isHostSpeaker
   isMutedRef.current = isMuted
   userIdRef.current = user?.id
+
+  // Live Track Mute Sync
+  useEffect(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(t => {
+        t.enabled = !isMuted
+      })
+    }
+  }, [isMuted])
 
   // Sync deafened state to Web Audio Engine and Remote Audio element
   useEffect(() => {
@@ -318,11 +345,15 @@ export default function LiveAudioRoomPage() {
       })
   }, [id, user, navigate])
 
-  // WebRTC PeerJS Connection Initialization
+  // WebRTC PeerJS Connection Initialization (Deterministic Host/Listener Architecture)
   useEffect(() => {
-    if (!id) return
+    if (!id || loading || !session) return
 
-    const peer = new Peer({
+    // Host uses deterministic room ID; listeners use random IDs
+    const hostPeerId = `eleven-room-${id}-host`
+    const peerInitId = isHostSpeaker ? hostPeerId : undefined
+
+    const peer = new Peer(peerInitId as any, {
       config: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -335,23 +366,43 @@ export default function LiveAudioRoomPage() {
     peerRef.current = peer
 
     peer.on('open', (pId) => {
-      console.log('[WebRTC Live Stream] Peer ID active:', pId)
+      console.log('[WebRTC Live Stream] Connected with Peer ID:', pId)
       setMyPeerId(pId)
       scheduleApi.sendHeartbeat(id, pId).catch(() => {})
       scheduleApi.joinRoom(id, pId).catch(() => {})
+
+      // If listener, immediately call the host directly
+      if (!isHostSpeaker) {
+        console.log('[WebRTC Listener] Calling host:', hostPeerId)
+        const dummyStream = createSilentAudioStream()
+        const call = peer.call(hostPeerId, dummyStream)
+        if (call) {
+          call.on('stream', (remoteStream) => {
+            console.log('[WebRTC Listener] Received real-time live host audio stream!')
+            if (remoteAudioRef.current) {
+              remoteAudioRef.current.srcObject = remoteStream
+              remoteAudioRef.current.play().then(() => {
+                setIsWebRtcConnected(true)
+                setIsAutoplayBlocked(false)
+              }).catch(() => {
+                setIsAutoplayBlocked(true)
+              })
+            }
+          })
+        }
+      }
     })
 
     peer.on('call', (incomingCall) => {
       console.log('[WebRTC Live Stream] Incoming call from peer:', incomingCall.peer)
-      if (localStreamRef.current && isHostSpeaker && !isMutedRef.current) {
+      if (localStreamRef.current) {
         incomingCall.answer(localStreamRef.current)
       } else {
-        incomingCall.answer()
+        incomingCall.answer(createSilentAudioStream())
       }
 
       incomingCall.on('stream', (remoteStream) => {
-        console.log('[WebRTC Live Stream] Received real-time live host audio stream!')
-        if (remoteAudioRef.current) {
+        if (!isHostSpeaker && remoteAudioRef.current) {
           remoteAudioRef.current.srcObject = remoteStream
           remoteAudioRef.current.play().then(() => {
             setIsWebRtcConnected(true)
@@ -369,7 +420,7 @@ export default function LiveAudioRoomPage() {
       } catch {}
       peerRef.current = null
     }
-  }, [id])
+  }, [id, loading, session, isHostSpeaker])
 
   // Join room on load
   useEffect(() => {
@@ -377,12 +428,11 @@ export default function LiveAudioRoomPage() {
     scheduleApi.joinRoom(id, myPeerId || undefined).catch(() => {})
   }, [loading, session, id, myPeerId])
 
-  // 1. Audio Recording Loop for Host/Moderator (Zero-Gap Continuous Standalone Chunks)
+  // 1. Continuous Audio Streaming (Zero-Dropped Audio Frame Capture)
   useEffect(() => {
     if (loading || !session || !id) return
 
     let isRecordingActive = true
-    let recordingTimeout: any = null
     let activeStream: MediaStream | null = null
 
     if (isHostSpeaker && !isMuted) {
@@ -401,17 +451,6 @@ export default function LiveAudioRoomPage() {
           activeStream = stream
           localStreamRef.current = stream
 
-          // Broadcast live stream directly over WebRTC to any connected peer listeners
-          if (peerRef.current && myPeerId) {
-            for (const p of participants) {
-              if (p.peer_id && p.peer_id !== myPeerId && !connectedPeersRef.current.has(p.peer_id)) {
-                connectedPeersRef.current.add(p.peer_id)
-                console.log('[WebRTC] Calling listener peer with live mic stream:', p.peer_id)
-                peerRef.current.call(p.peer_id, stream)
-              }
-            }
-          }
-
           // Determine supported MIME type
           let mimeType = 'audio/webm;codecs=opus'
           if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -424,54 +463,25 @@ export default function LiveAudioRoomPage() {
             }
           }
 
-          const recordSegment = () => {
-            if (!isRecordingActive || !activeStream) return
+          try {
+            // Start continuous MediaRecorder in timeslice mode so not a single word is ever dropped
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+            mediaRecorderRef.current = recorder
 
-            try {
-              const recorder = new MediaRecorder(activeStream, mimeType ? { mimeType } : undefined)
-              mediaRecorderRef.current = recorder
-              const chunks: Blob[] = []
-
-              recorder.ondataavailable = (e) => {
-                if (e.data && e.data.size > 0) {
-                  chunks.push(e.data)
-                }
-              }
-
-              recorder.onstop = () => {
-                if (chunks.length > 0 && isRecordingActive) {
-                  const blobType = mimeType || recorder.mimeType || 'audio/webm'
-                  const completeBlob = new Blob(chunks, { type: blobType })
-                  if (completeBlob.size > 50) {
-                    const currentSeq = sequenceCounterRef.current++
-                    scheduleApi.uploadAudio(id, currentSeq, completeBlob).catch(err => {
-                      console.warn('[Live Audio] Audio upload error:', err)
-                    })
-                  }
-                }
-
-                // Schedule next standalone segment with a small release tick
-                if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
-                  recordingTimeout = setTimeout(recordSegment, 25)
-                }
-              }
-
-              recorder.start()
-              // 800ms standalone micro-chunks for instant responsive audio streaming
-              recordingTimeout = setTimeout(() => {
-                if (recorder.state === 'recording') {
-                  recorder.stop()
-                }
-              }, 800)
-            } catch (err) {
-              console.error('[Live Audio] MediaRecorder error:', err)
-              if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
-                recordingTimeout = setTimeout(recordSegment, 300)
+            recorder.ondataavailable = (e) => {
+              if (e.data && e.data.size > 100 && isRecordingActive && isHostSpeaker && !isMutedRef.current) {
+                const currentSeq = sequenceCounterRef.current++
+                scheduleApi.uploadAudio(id, currentSeq, e.data).catch(err => {
+                  console.warn('[Live Audio] Audio chunk upload error:', err)
+                })
               }
             }
-          }
 
-          recordSegment()
+            // Slice every 1000ms continuously WITHOUT stopping the recorder
+            recorder.start(1000)
+          } catch (err) {
+            console.error('[Live Audio] Continuous MediaRecorder error:', err)
+          }
         })
         .catch(err => {
           console.error('[Live Audio] Microphone error:', err)
@@ -482,10 +492,9 @@ export default function LiveAudioRoomPage() {
 
     return () => {
       isRecordingActive = false
-      if (recordingTimeout) clearTimeout(recordingTimeout)
       stopRecording()
     }
-  }, [loading, session, id, isHostSpeaker, isMuted, myPeerId, participants])
+  }, [loading, session, id, isHostSpeaker, isMuted])
 
   const unlockAudioPlayback = () => {
     setIsAutoplayBlocked(false)
@@ -571,7 +580,7 @@ export default function LiveAudioRoomPage() {
             return
           }
 
-          // Sync Participants & WebRTC Call Mesh
+          // Sync Participants
           if (Array.isArray(data.participants)) {
             const mapped: Participant[] = data.participants.map((p: any) => ({
               id: p.id.toString(),
@@ -582,39 +591,6 @@ export default function LiveAudioRoomPage() {
               peer_id: p.peer_id
             }))
             setParticipants(mapped)
-
-            // WebRTC Direct Real-Time Streaming Mesh
-            if (peerRef.current && myPeerId) {
-              const hostParticipant = mapped.find(p => p.user_id === session?.host_id && p.peer_id && p.peer_id !== myPeerId)
-
-              // If Host: Broadcast real-time stream directly to every connected listener
-              if (isHostSpeaker && localStreamRef.current && !isMutedRef.current) {
-                for (const p of mapped) {
-                  if (p.peer_id && p.peer_id !== myPeerId && !connectedPeersRef.current.has(p.peer_id)) {
-                    connectedPeersRef.current.add(p.peer_id)
-                    console.log('[WebRTC] Host calling listener peer:', p.peer_id)
-                    peerRef.current.call(p.peer_id, localStreamRef.current)
-                  }
-                }
-              } else if (!isHostSpeaker && hostParticipant && hostParticipant.peer_id && !connectedPeersRef.current.has(hostParticipant.peer_id)) {
-                // If Listener: Call host to subscribe to real-time audio stream
-                connectedPeersRef.current.add(hostParticipant.peer_id)
-                console.log('[WebRTC] Listener calling host peer:', hostParticipant.peer_id)
-                const call = peerRef.current.call(hostParticipant.peer_id, new MediaStream())
-                call?.on('stream', (remoteStream) => {
-                  console.log('[WebRTC] Listener connected to host audio!')
-                  if (remoteAudioRef.current) {
-                    remoteAudioRef.current.srcObject = remoteStream
-                    remoteAudioRef.current.play().then(() => {
-                      setIsWebRtcConnected(true)
-                      setIsAutoplayBlocked(false)
-                    }).catch(() => {
-                      setIsAutoplayBlocked(true)
-                    })
-                  }
-                })
-              }
-            }
 
             // Dynamic Co-Moderator promotion check for current user
             const currentParticipant = mapped.find(p => p.user_id === userIdRef.current)
