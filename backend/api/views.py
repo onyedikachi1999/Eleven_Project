@@ -634,8 +634,24 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             
         old_reactions = LiveRoomReaction.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(minutes=1))
         old_reactions.delete()
+
+        # Check if session is ended or time elapsed
+        is_ended = not session.is_live
+        ended_reason = 'moderator_closed' if is_ended else None
+        if session.scheduled_at:
+            duration_minutes = session.duration or 30
+            end_time = session.scheduled_at + timezone.timedelta(minutes=duration_minutes)
+            if timezone.now() >= end_time:
+                is_ended = True
+                ended_reason = 'time_elapsed'
+                if session.is_live:
+                    session.is_live = False
+                    session.save()
         
         return Response({
+            'is_live': session.is_live,
+            'is_ended': is_ended,
+            'ended_reason': ended_reason,
             'participants': participants_data,
             'messages': messages_data,
             'reactions': reactions_data,

@@ -56,6 +56,11 @@ export default function LiveAudioRoomPage() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [showExitWarning, setShowExitWarning] = useState(false)
   const [timeLeft, setTimeLeft] = useState(1800)
+  const [roomEndedState, setRoomEndedState] = useState<{
+    ended: boolean;
+    reason: 'moderator_closed' | 'time_elapsed';
+    countdown: number;
+  } | null>(null)
 
   // Refs
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -316,6 +321,46 @@ export default function LiveAudioRoomPage() {
     }
   }
 
+  // Graceful Room Concluded / Closed Handler
+  const triggerRoomEnded = (reason: 'moderator_closed' | 'time_elapsed') => {
+    if (liveEndedNotifiedRef.current) return
+    liveEndedNotifiedRef.current = true
+
+    // Stop recording and broadcasting immediately
+    stopRecording()
+
+    // Stop audio playback immediately and clear queue
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.src = ''
+      currentAudioRef.current = null
+    }
+    audioQueueRef.current = []
+    isPlayingRef.current = false
+
+    setRoomEndedState({
+      ended: true,
+      reason,
+      countdown: 6,
+    })
+  }
+
+  // Graceful redirection timer when room has ended
+  useEffect(() => {
+    if (!roomEndedState || !roomEndedState.ended) return
+
+    if (roomEndedState.countdown <= 0) {
+      navigate('/joint-prayer')
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setRoomEndedState(prev => prev ? { ...prev, countdown: prev.countdown - 1 } : null)
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [roomEndedState, navigate])
+
   // 3. Join room, start Polling (Heartbeat & Sync) Loop
   useEffect(() => {
     if (loading || !session || !id) return
@@ -325,11 +370,9 @@ export default function LiveAudioRoomPage() {
       const remaining = getSessionTimeLeft(session)
       setTimeLeft(remaining)
 
-      if (remaining <= 0 && !liveEndedNotifiedRef.current) {
-        liveEndedNotifiedRef.current = true
+      if (remaining <= 0) {
         clearInterval(timer)
-        toast.info('The live prayer session has concluded. Thank you for praying together!')
-        navigate('/joint-prayer')
+        triggerRoomEnded('time_elapsed')
       }
     }, 1000)
 
@@ -348,6 +391,12 @@ export default function LiveAudioRoomPage() {
       scheduleApi.syncRoom(id, lastMsgIdRef.current, lastReactIdRef.current, lastSequenceRef.current)
         .then(data => {
           if (!data) return
+
+          // If the room was closed prematurely by the moderator or time elapsed
+          if (data.is_ended && !liveEndedNotifiedRef.current) {
+            triggerRoomEnded(data.ended_reason || 'moderator_closed')
+            return
+          }
 
           // Sync Participants
           if (Array.isArray(data.participants)) {
@@ -933,20 +982,6 @@ export default function LiveAudioRoomPage() {
                 setShowExitWarning(false)
                 hasLeftRef.current = true
 
-                if (!id) return
-                
-                if (id.startsWith('s')) {
-                  const hasCoMod = participants.some(p => p.isCoModerator && p.user_id !== session?.host_id)
-                  if (hasCoMod) {
-                    const firstCoMod = participants.find(p => p.isCoModerator && p.user_id !== session?.host_id)
-                    toast.success(`Room handed over to Co-Host: ${firstCoMod?.name || 'Co-Host'}`)
-                  } else {
-                    toast.success('Live prayer session has been ended successfully.')
-                  }
-                  navigate('/joint-prayer')
-                  return
-                }
-
                 try {
                   const res = await scheduleApi.leaveRoom(id)
                   if (res && res.status === 'handed_over') {
@@ -964,6 +999,40 @@ export default function LiveAudioRoomPage() {
               className={participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-red-600 hover:bg-red-500 text-white"}
             >
               {participants.some(p => p.isCoModerator && p.user_id !== session?.host_id) ? "Leave Room" : "End Session & Exit"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Room Concluded / Closed Notification Dialog ── */}
+      <Dialog open={Boolean(roomEndedState?.ended)} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md bg-[#161c27] border border-white/10 text-white p-6 rounded-2xl animate-none text-center [&>button]:hidden">
+          <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-3 bg-stone-800/80 border border-white/15 text-2xl shadow-inner">
+            {roomEndedState?.reason === 'time_elapsed' ? '🕊️' : '🛑'}
+          </div>
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-xl font-bold text-white text-center">
+              {roomEndedState?.reason === 'time_elapsed'
+                ? 'Prayer Watch Concluded'
+                : 'Live Session Ended by Host'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-3 text-sm text-stone-300 space-y-3">
+            <p className="leading-relaxed">
+              {roomEndedState?.reason === 'time_elapsed'
+                ? 'The scheduled duration for this live prayer watch has completed. Thank you for gathering in agreement, interceding, and standing in faith together!'
+                : 'The host has ended this live prayer watch. Thank you for your prayers, participation, and fellowship today.'}
+            </p>
+            <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-400">
+              Returning to Joint Prayer in <strong className="text-emerald-400 text-sm font-bold">{roomEndedState?.countdown}</strong> seconds...
+            </div>
+          </div>
+          <div className="pt-2">
+            <Button
+              onClick={() => navigate('/joint-prayer')}
+              className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all cursor-pointer"
+            >
+              Return to Joint Prayer Now
             </Button>
           </div>
         </DialogContent>
