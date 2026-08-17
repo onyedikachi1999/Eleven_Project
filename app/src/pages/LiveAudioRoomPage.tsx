@@ -112,26 +112,20 @@ class LiveStreamAudioEngine {
       }
     }
 
-    // Try HTMLAudioElement for direct container playback
-    let htmlAudioSuccess = false
+    // Direct Web Audio API decode & playback
+    this.decodeAndPlayWebAudio(url)
+
+    // Direct HTMLAudio fallback
     try {
       const audio = new Audio(url)
       audio.volume = this.isMutedOrDeafened ? 0 : 1
-      const playPromise = audio.play()
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            htmlAudioSuccess = true
-          })
-          .catch(async () => {
-            if (this.onAutoplayBlocked) this.onAutoplayBlocked()
-            // If HTMLAudio is blocked or unsupported (iOS Safari WebM), decode with AudioContext
-            this.decodeAndPlayWebAudio(url)
-          })
+      const p = audio.play()
+      if (p !== undefined) {
+        p.catch(() => {
+          if (this.onAutoplayBlocked) this.onAutoplayBlocked()
+        })
       }
-    } catch {
-      this.decodeAndPlayWebAudio(url)
-    }
+    } catch {}
   }
 
   private async decodeAndPlayWebAudio(url: string) {
@@ -147,14 +141,15 @@ class LiveStreamAudioEngine {
       source.connect(this.gainNode)
 
       const currentTime = this.ctx.currentTime
-      if (this.nextPlayTime < currentTime || this.nextPlayTime > currentTime + 6) {
-        this.nextPlayTime = currentTime + 0.05
+      // Prevent buffer queue lag: if scheduled time fell behind or drifted ahead by >0.6s, snap to live
+      if (this.nextPlayTime < currentTime || this.nextPlayTime > currentTime + 0.6) {
+        this.nextPlayTime = currentTime + 0.02
       }
 
       source.start(this.nextPlayTime)
       this.nextPlayTime += audioBuffer.duration
     } catch (e) {
-      console.warn('[Audio Engine] WebAudio decode error:', e)
+      console.warn('[Audio Engine] WebAudio decode fallback:', e)
     }
   }
 
@@ -457,21 +452,21 @@ export default function LiveAudioRoomPage() {
 
                 // Schedule next standalone segment with a small release tick
                 if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
-                  recordingTimeout = setTimeout(recordSegment, 40)
+                  recordingTimeout = setTimeout(recordSegment, 25)
                 }
               }
 
               recorder.start()
-              // 1.5-second standalone chunks for responsive low-latency streaming
+              // 800ms standalone micro-chunks for instant responsive audio streaming
               recordingTimeout = setTimeout(() => {
                 if (recorder.state === 'recording') {
                   recorder.stop()
                 }
-              }, 1500)
+              }, 800)
             } catch (err) {
               console.error('[Live Audio] MediaRecorder error:', err)
               if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
-                recordingTimeout = setTimeout(recordSegment, 500)
+                recordingTimeout = setTimeout(recordSegment, 300)
               }
             }
           }
@@ -554,7 +549,7 @@ export default function LiveAudioRoomPage() {
       }
     }, 1000)
 
-    // 1.2-second Sync loop
+    // 800ms Fast Sync loop for responsive real-time room synchronization
     const syncInterval = setInterval(() => {
       // 1. Send Heartbeat with myPeerId to keep active list correct
       scheduleApi.sendHeartbeat(id, myPeerId || undefined)
@@ -684,7 +679,7 @@ export default function LiveAudioRoomPage() {
           }
         })
         .catch(() => {})
-    }, 1200)
+    }, 800)
 
     // Audio Visualizer simulator loop
     const visualizerInterval = setInterval(() => {
