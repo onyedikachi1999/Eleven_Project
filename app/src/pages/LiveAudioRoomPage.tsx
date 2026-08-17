@@ -37,6 +37,118 @@ interface Participant {
   peer_id?: string
 }
 
+// Web Audio API engine for low-latency, glitch-free live audio streaming
+class LiveStreamAudioEngine {
+  private ctx: AudioContext | null = null
+  private gainNode: GainNode | null = null
+  private nextPlayTime: number = 0
+  private playedSequences: Set<number> = new Set()
+  private isMutedOrDeafened: boolean = false
+  private onAutoplayBlocked?: () => void
+
+  constructor(onBlocked?: () => void) {
+    this.onAutoplayBlocked = onBlocked
+  }
+
+  private initContext() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (AudioCtx) {
+        this.ctx = new AudioCtx()
+        this.gainNode = this.ctx.createGain()
+        this.gainNode.connect(this.ctx.destination)
+        this.gainNode.gain.value = this.isMutedOrDeafened ? 0 : 1
+      }
+    }
+  }
+
+  public setVolume(volume: number) {
+    this.isMutedOrDeafened = volume === 0
+    if (this.gainNode && this.ctx) {
+      try {
+        this.gainNode.gain.setValueAtTime(volume, this.ctx.currentTime)
+      } catch {}
+    }
+  }
+
+  public async unlock() {
+    this.initContext()
+    if (this.ctx && this.ctx.state === 'suspended') {
+      try {
+        await this.ctx.resume()
+      } catch (e) {
+        console.warn('AudioContext resume failed:', e)
+      }
+    }
+  }
+
+  public async queueAndPlay(sequence: number, url: string) {
+    if (this.playedSequences.has(sequence)) return
+    this.playedSequences.add(sequence)
+
+    // Keep set bounded
+    if (this.playedSequences.size > 200) {
+      const arr = Array.from(this.playedSequences).slice(-100)
+      this.playedSequences = new Set(arr)
+    }
+
+    this.initContext()
+    if (!this.ctx || !this.gainNode) return
+
+    if (this.ctx.state === 'suspended') {
+      try {
+        await this.ctx.resume()
+      } catch {
+        if (this.onAutoplayBlocked) this.onAutoplayBlocked()
+      }
+    }
+
+    try {
+      const response = await fetch(url)
+      if (!response.ok) return
+      const arrayBuffer = await response.arrayBuffer()
+      
+      // Decode audio buffer with Web Audio API
+      const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer)
+
+      const source = this.ctx.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(this.gainNode)
+
+      const currentTime = this.ctx.currentTime
+      // If we fell behind by more than 0.2s or starting fresh, schedule near current time
+      if (this.nextPlayTime < currentTime || this.nextPlayTime > currentTime + 6) {
+        this.nextPlayTime = currentTime + 0.05
+      }
+
+      source.start(this.nextPlayTime)
+      this.nextPlayTime += audioBuffer.duration
+    } catch (err) {
+      console.warn('[Web Audio Engine] Chunk decode fallback:', err)
+      // Fallback: try HTMLAudioElement
+      try {
+        const audio = new Audio(url)
+        audio.volume = this.isMutedOrDeafened ? 0 : 1
+        audio.play().catch(() => {
+          if (this.onAutoplayBlocked) this.onAutoplayBlocked()
+        })
+      } catch {}
+    }
+  }
+
+  public stop() {
+    if (this.ctx) {
+      try {
+        this.ctx.close()
+      } catch {}
+      this.ctx = null
+      this.gainNode = null
+    }
+    this.nextPlayTime = 0
+    this.playedSequences.clear()
+  }
+}
+
 export default function LiveAudioRoomPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -68,12 +180,18 @@ export default function LiveAudioRoomPage() {
   const lastReactIdRef = useRef<number>(0)
   const isModeratorRef = useRef<boolean>(false)
 
+  // Web Audio Engine Ref
+  const audioEngineRef = useRef<LiveStreamAudioEngine | null>(null)
+  if (!audioEngineRef.current) {
+    audioEngineRef.current = new LiveStreamAudioEngine(() => {
+      setIsAutoplayBlocked(true)
+    })
+  }
+
   // HTTP Live Audio Chunks Refs & State
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const sequenceCounterRef = useRef<number>(Date.now())
   const lastSequenceRef = useRef<number>(-1)
-  const audioQueueRef = useRef<string[]>([])
-  const isPlayingRef = useRef<boolean>(false)
   const isDeafenedRef = useRef<boolean>(false)
   const isMutedRef = useRef<boolean>(true)
   const hasLeftRef = useRef<boolean>(false)
@@ -81,8 +199,6 @@ export default function LiveAudioRoomPage() {
   const sequenceInitializedRef = useRef<boolean>(false)
   const userIdRef = useRef<number | undefined>(undefined)
   
-  // Dynamic audio controls
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false)
   const isAutoplayBlockedRef = useRef<boolean>(false)
 
@@ -101,12 +217,10 @@ export default function LiveAudioRoomPage() {
   isMutedRef.current = isMuted
   userIdRef.current = user?.id
 
-  // Sync deafened state to ref
+  // Sync deafened state to Web Audio Engine
   useEffect(() => {
     isDeafenedRef.current = isDeafened
-    if (currentAudioRef.current) {
-      currentAudioRef.current.volume = isDeafened ? 0 : 1
-    }
+    audioEngineRef.current?.setVolume(isDeafened ? 0 : 1)
   }, [isDeafened])
 
   const getSessionTimeLeft = (sessionData: any) => {
@@ -139,10 +253,7 @@ export default function LiveAudioRoomPage() {
         const latestChunk = sorted[sorted.length - 1]
         if (latestChunk && latestChunk.url) {
           const secureUrl = getMediaUrl(latestChunk.url) || latestChunk.url
-          audioQueueRef.current.push(secureUrl)
-          if (!isPlayingRef.current) {
-            playNextChunk()
-          }
+          audioEngineRef.current?.queueAndPlay(latestChunk.sequence, secureUrl)
         }
       }
     } catch (err) {
@@ -276,49 +387,10 @@ export default function LiveAudioRoomPage() {
     }
   }, [loading, session, id, isHostSpeaker, isMuted])
 
-  // 2. Client Audio Playback Playlist Manager
-  const playNextChunk = () => {
-    if (audioQueueRef.current.length === 0) {
-      isPlayingRef.current = false
-      return
-    }
-
-    if (isModeratorRef.current) {
-      audioQueueRef.current = []
-      isPlayingRef.current = false
-      return
-    }
-
-    isPlayingRef.current = true
-    const nextUrl = audioQueueRef.current.shift()!
-    const secureUrl = getMediaUrl(nextUrl) || nextUrl
-    const audio = new Audio(secureUrl)
-    currentAudioRef.current = audio
-    audio.volume = isDeafenedRef.current ? 0 : 1
-
-    audio.onended = () => {
-      playNextChunk()
-    }
-
-    audio.onerror = (e) => {
-      console.warn('[Live Audio] Playback chunk error (advancing to next):', e)
-      playNextChunk()
-    }
-
-    audio.play().catch(err => {
-      console.warn('[Live Audio] Autoplay blocked by browser policy:', err)
-      audioQueueRef.current.unshift(nextUrl)
-      isPlayingRef.current = false
-      setIsAutoplayBlocked(true)
-    })
-  }
-
   const unlockAudioPlayback = () => {
     setIsAutoplayBlocked(false)
     isAutoplayBlockedRef.current = false
-    if (!isPlayingRef.current && audioQueueRef.current.length > 0) {
-      playNextChunk()
-    }
+    audioEngineRef.current?.unlock()
   }
 
   // Graceful Room Concluded / Closed Handler
@@ -329,14 +401,8 @@ export default function LiveAudioRoomPage() {
     // Stop recording and broadcasting immediately
     stopRecording()
 
-    // Stop audio playback immediately and clear queue
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause()
-      currentAudioRef.current.src = ''
-      currentAudioRef.current = null
-    }
-    audioQueueRef.current = []
-    isPlayingRef.current = false
+    // Stop Web Audio playback
+    audioEngineRef.current?.stop()
 
     setRoomEndedState({
       ended: true,
@@ -420,20 +486,14 @@ export default function LiveAudioRoomPage() {
           if (!isModeratorRef.current && !isDeafenedRef.current && Array.isArray(data.audio_chunks) && data.audio_chunks.length > 0) {
             // Sort ascending by sequence
             const sortedChunks = [...data.audio_chunks].sort((a, b) => a.sequence - b.sequence)
-            const newUrls: string[] = []
             
             for (const c of sortedChunks) {
               if (c.sequence > lastSequenceRef.current) {
                 lastSequenceRef.current = c.sequence
                 const secureUrl = getMediaUrl(c.url) || c.url
-                if (secureUrl) newUrls.push(secureUrl)
-              }
-            }
-            
-            if (newUrls.length > 0) {
-              audioQueueRef.current.push(...newUrls)
-              if (!isPlayingRef.current) {
-                playNextChunk()
+                if (secureUrl) {
+                  audioEngineRef.current?.queueAndPlay(c.sequence, secureUrl)
+                }
               }
             }
           }
@@ -478,7 +538,7 @@ export default function LiveAudioRoomPage() {
           }
         })
         .catch(() => {})
-    }, 2000)
+    }, 1200)
 
     // Audio Visualizer simulator loop
     const visualizerInterval = setInterval(() => {
@@ -494,14 +554,8 @@ export default function LiveAudioRoomPage() {
       clearInterval(syncInterval)
       clearInterval(visualizerInterval)
       
-      // Stop audio playback immediately and clear queue
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause()
-        currentAudioRef.current.src = ''
-        currentAudioRef.current = null
-      }
-      audioQueueRef.current = []
-      isPlayingRef.current = false
+      // Stop Web Audio Engine immediately
+      audioEngineRef.current?.stop()
       
       // Call leave endpoint on exit if not already left
       if (!hasLeftRef.current && id) {
