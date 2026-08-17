@@ -8,8 +8,9 @@ from django.middleware.csrf import get_token
 from django.db.models import Q, Count
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import (
@@ -800,17 +801,21 @@ def clear_login_failures(request, username):
     cache.delete(cache_key_combo)
 
 
+@csrf_exempt
 @api_view(['GET'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def api_csrf_token(request):
     return Response({'csrfToken': get_token(request)})
 
 
+@csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def api_login(request):
-    username = request.data.get('username', '').strip()
-    password = request.data.get('password')
+    username = str(request.data.get('username', '')).strip()
+    password = str(request.data.get('password', ''))
     
     if not username or not password:
         return Response({'detail': 'Username and password are required'}, status=400)
@@ -848,7 +853,9 @@ def api_logout(request):
     return Response({'detail': 'Logged out'})
 
 
+@csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def api_google_auth(request):
     token = request.data.get('credential')
@@ -913,7 +920,7 @@ def api_google_auth(request):
         return Response({
             'detail': 'Logged in successfully',
             'token': token.key,
-            'user': UserSerializer(user).data
+            'user': UserSerializer(user, context={'request': request}).data
         })
 
     except requests.exceptions.RequestException as e:
@@ -922,7 +929,9 @@ def api_google_auth(request):
         return Response({'detail': f'Authentication error: {str(e)}'}, status=500)
 
 
+@csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def api_register(request):
     username = request.data.get('username')
