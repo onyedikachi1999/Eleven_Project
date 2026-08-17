@@ -43,8 +43,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUser = useCallback(async () => {
     try {
       await authApi.fetchCsrfToken();
-      const avatar = getMediaUrl(data.avatar);
-      setUser({ ...data, avatar, name: data.first_name || data.username });
+      const data = await authApi.me();
+      const avatar = getMediaUrl(data?.avatar);
+      setUser(data ? { ...data, avatar, name: data.first_name || data.username } : null);
     } catch {
       setUser(null);
     } finally {
