@@ -317,28 +317,21 @@ export default function JointPrayer() {
   }, [])
 
   const handleJoinSession = (sessionData: any) => {
-    const sessionObj = typeof sessionData === 'string'
-      ? { id: 's1', title: sessionData }
-      : sessionData
-    navigate(`/live-room/${sessionObj.id || 's1'}`)
+    if (sessionData && sessionData.id) {
+      navigate(`/live-room/${sessionData.id}`)
+    }
   };
 
   const handleScheduleAction = (s: any) => {
-    navigate(`/live-room/${s.id || 's1'}`)
+    if (s && s.id) {
+      navigate(`/live-room/${s.id}`)
+    }
   };
 
   const handleSetReminder = (e: React.MouseEvent, title: string) => {
     e.stopPropagation()
     toast.success(`Reminder set for: ${title}`)
   }
-
-  const defaultSampleSessions = [
-    { id: 's1', title: 'Morning Grace Prayer Watch', description: 'Starting the day in worship, intercession, and personal prayer.', scheduled_at: new Date().toISOString(), duration: 30, participant_count: 42, is_live: true, host_name: 'Pastor David' },
-    { id: 's2', title: 'Healing & Deliverance Fellowship', description: 'Gathering to pray for the sick, brokenhearted, and needy.', scheduled_at: new Date(Date.now() + 3600000).toISOString(), duration: 45, participant_count: 28, is_live: true, host_name: 'Sister Sarah' },
-    { id: 's3', title: 'Midnight Breakthrough Vigil', description: 'Late-night prayer watch standing in agreement for miracles.', scheduled_at: new Date(Date.now() + 14400000).toISOString(), duration: 60, participant_count: 65, is_live: false, host_name: 'Brother John' },
-  ]
-
-  const displaySchedules = (Array.isArray(schedules) && schedules.length > 0) ? schedules : defaultSampleSessions
 
   return (
     <div>
@@ -351,27 +344,51 @@ export default function JointPrayer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
         {/* Active Live Session Banner */}
         <section>
-          <div className="flex items-center gap-2 mb-4"><Radio size={18} className="text-red-500 animate-pulse" /><h2 className="font-display text-xl font-semibold" style={{ color: 'var(--eleven-text)' }}>Live Audio Prayer Watch</h2></div>
-          <div className="rounded-2xl p-6 text-white shadow-xl relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
-            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider mb-2 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> BROADCASTING NOW
-                </div>
-                <h3 className="font-display text-xl font-bold mb-1">{liveSession?.title || 'Global Live Prayer & Intercession Room'}</h3>
-                <p className="text-sm text-stone-300 max-w-xl">{liveSession?.description || 'Believers gathered live across the world praying in agreement for healing, peace, and breakthroughs.'}</p>
-                <div className="flex items-center gap-4 mt-3 text-xs text-stone-400">
-                  <span className="flex items-center gap-1 text-emerald-400 font-semibold"><Users size={13} /> {liveSession?.participant_count || 142} praying live</span>
-                </div>
-              </div>
-              <Button
-                className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs h-10 px-6 rounded-full shadow-lg hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
-                onClick={() => handleJoinSession(liveSession || 'Global Live Prayer Room')}
-              >
-                <Radio size={15} className="animate-pulse" /> Join Live Audio Room
-              </Button>
-            </div>
+          <div className="flex items-center gap-2 mb-4">
+            <Radio size={18} className={liveSession?.is_live ? "text-red-500 animate-pulse" : "text-stone-400"} />
+            <h2 className="font-display text-xl font-semibold" style={{ color: 'var(--eleven-text)' }}>Live Audio Prayer Watch</h2>
           </div>
+
+          {liveSession && liveSession.id ? (
+            <div className="rounded-2xl p-6 text-white shadow-xl relative overflow-hidden animate-fade-in" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+              <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider mb-2 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> BROADCASTING NOW
+                  </div>
+                  <h3 className="font-display text-xl font-bold mb-1">{liveSession.title}</h3>
+                  <p className="text-sm text-stone-300 max-w-xl">{liveSession.description || 'Believers gathered live in real-time prayer, intercession, and fellowship.'}</p>
+                  <div className="flex items-center gap-4 mt-3 text-xs text-stone-400">
+                    <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                      <Users size={13} /> {liveSession.participant_count || 1} praying live
+                    </span>
+                    {liveSession.host_name && (
+                      <span>Hosted by {liveSession.host_name}</span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs h-10 px-6 rounded-full shadow-lg hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
+                  onClick={() => handleJoinSession(liveSession)}
+                >
+                  <Radio size={15} className="animate-pulse" /> Join Live Audio Room
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl p-6 border border-dashed border-stone-300 bg-stone-50/70 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-stone-200 text-stone-600 text-[10px] font-bold uppercase tracking-wider mb-1">
+                  ● STANDBY
+                </div>
+                <h3 className="font-display text-lg font-bold text-stone-800">No Live Prayer Session Currently Broadcasting</h3>
+                <p className="text-xs text-stone-500 max-w-xl">
+                  There is no active live session at this moment. Schedule a live prayer watch to start broadcasting or check upcoming sessions below.
+                </p>
+              </div>
+              <CreateSessionModal onSuccess={loadSchedules} />
+            </div>
+          )}
         </section>
 
         {/* Scheduled Sessions */}
@@ -381,42 +398,57 @@ export default function JointPrayer() {
             <CreateSessionModal onSuccess={loadSchedules} />
           </div>
           {loading ? <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div> : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {displaySchedules.map(s => (
-                <div key={s.id} className="bg-white rounded-xl p-5 transition-all hover:shadow-md border border-stone-200 flex flex-col justify-between" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full" style={{ background: s.is_live ? '#fee2e2' : 'var(--eleven-surface-elevated)', color: s.is_live ? '#dc2626' : 'var(--eleven-text-secondary)' }}>
-                        {s.is_live ? '● LIVE NOW' : formatDate(s.scheduled_at)}
+            schedules && schedules.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {schedules.map(s => (
+                  <div key={s.id} className="bg-white rounded-xl p-5 transition-all hover:shadow-md border border-stone-200 flex flex-col justify-between" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                    <div>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full" style={{ background: s.is_live ? '#fee2e2' : 'var(--eleven-surface-elevated)', color: s.is_live ? '#dc2626' : 'var(--eleven-text-secondary)' }}>
+                          {s.is_live ? '● LIVE NOW' : formatDate(s.scheduled_at)}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-stone-400">
+                          <span className="flex items-center gap-1 font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100"><Clock size={11} /> {s.duration || 30}m</span>
+                          <span>{formatTime(s.scheduled_at)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-stone-400">
-                        <span className="flex items-center gap-1 font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100"><Clock size={11} /> {s.duration || 30}m</span>
-                        <span>{formatTime(s.scheduled_at)}</span>
+                      <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{s.title}</h3>
+                      <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{s.description}</p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between pt-3 border-t border-stone-100 mb-3">
+                        <span className="text-xs flex items-center gap-1 text-stone-400"><Users size={12} /> {s.participant_count || 0} joining</span>
+                        {!s.is_live && (
+                          <button onClick={e => handleSetReminder(e, s.title)} className="text-[11px] font-medium text-stone-500 hover:text-stone-800 underline cursor-pointer">
+                            Remind Me
+                          </button>
+                        )}
                       </div>
+                      <Button
+                        size="sm"
+                        className="w-full rounded-lg text-xs h-8 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                        onClick={() => handleScheduleAction(s)}
+                      >
+                        <Radio size={13} className="animate-pulse" /> Join Live Room
+                      </Button>
                     </div>
-                    <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{s.title}</h3>
-                    <p className="text-xs line-clamp-2 mb-3" style={{ color: 'var(--eleven-text-secondary)' }}>{s.description}</p>
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between pt-3 border-t border-stone-100 mb-3">
-                      <span className="text-xs flex items-center gap-1 text-stone-400"><Users size={12} /> {s.participant_count || 12} joining</span>
-                      {!s.is_live && (
-                        <button onClick={e => handleSetReminder(e, s.title)} className="text-[11px] font-medium text-stone-500 hover:text-stone-800 underline cursor-pointer">
-                          Remind Me
-                        </button>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      className="w-full rounded-lg text-xs h-8 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                      onClick={() => handleScheduleAction(s)}
-                    >
-                      <Radio size={13} className="animate-pulse" /> Join Live Room
-                    </Button>
-                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-stone-100 text-stone-500 flex items-center justify-center mx-auto">
+                  <Radio size={20} />
                 </div>
-              ))}
-            </div>
+                <h3 className="font-display text-base font-bold text-stone-800">No Scheduled Live Sessions</h3>
+                <p className="text-xs text-stone-500 max-w-md mx-auto">
+                  There are no scheduled prayer watches yet. Premium members can schedule or start a live room at any time.
+                </p>
+                <div className="pt-1">
+                  <CreateSessionModal onSuccess={loadSchedules} />
+                </div>
+              </div>
+            )
           )}
         </section>
 

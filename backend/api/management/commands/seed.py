@@ -127,16 +127,6 @@ class Command(BaseCommand):
         for data in circles_data:
             PrayerCircle.objects.create(created_by=user, **data)
 
-        now = timezone.now()
-        schedules_data = [
-            {'title': 'Evening Devotional Prayer', 'description': 'Join us for a 30-minute guided prayer session focused on gratitude and reflection.', 'scheduled_at': now + timezone.timedelta(hours=2), 'duration': 30, 'is_live': True, 'participant_count': 23},
-            {'title': 'Midnight Prayer Watch', 'description': 'A powerful hour of intercession. We pray for healing, deliverance, and breakthrough.', 'scheduled_at': now + timezone.timedelta(hours=8), 'duration': 60, 'is_live': False, 'participant_count': 45},
-            {'title': 'Youth Prayer Gathering', 'description': 'Young people coming together to pray for their generation.', 'scheduled_at': now + timezone.timedelta(days=1), 'duration': 45, 'is_live': False, 'participant_count': 67},
-        ]
-
-        for data in schedules_data:
-            ScheduledPrayer.objects.create(host=user, **data)
-
         topics_data = [
             {'title': 'How do you maintain faith during long seasons of waiting?', 'content': 'I have been praying for a breakthrough in my career for over two years now. Some days my faith is strong, other days I feel like giving up. How do you all stay encouraged?', 'category': 'faith', 'user': user, 'reply_count': 12, 'view_count': 156},
             {'title': 'Navigating faith and mental health struggles', 'content': 'As someone who deals with anxiety and depression, I sometimes hear people say just pray more. How do you balance spiritual warfare with practical mental health care?', 'category': 'life', 'user': user, 'reply_count': 18, 'view_count': 234},

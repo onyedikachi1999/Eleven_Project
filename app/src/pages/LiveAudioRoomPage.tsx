@@ -141,27 +141,6 @@ export default function LiveAudioRoomPage() {
   useEffect(() => {
     if (!id) return
 
-    if (id.startsWith('s')) {
-      const mockSessions: Record<string, any> = {
-        s1: { id: 's1', title: 'Morning Grace Prayer Watch', description: 'Starting the day in worship, intercession, and personal prayer.', duration: 30, host_name: 'Pastor David', host_id: 999, scheduled_at: new Date().toISOString() },
-        s2: { id: 's2', title: 'Healing & Deliverance Fellowship', description: 'Gathering to pray for the sick, brokenhearted, and needy.', duration: 45, host_name: 'Sister Sarah', host_id: 998, scheduled_at: new Date().toISOString() },
-        s3: { id: 's3', title: 'Midnight Breakthrough Vigil', description: 'Late-night prayer watch standing in agreement for miracles.', duration: 60, host_name: 'Brother John', host_id: 997, scheduled_at: new Date(Date.now() + 14400000).toISOString() },
-      }
-      const data = mockSessions[id] || mockSessions.s1
-      
-      const isHost = (user?.id === data.host_id)
-      if (!isHost && new Date(data.scheduled_at) > new Date()) {
-        toast.error("This live session has not started yet. Please check back at the scheduled start time.")
-        navigate('/joint-prayer')
-        return
-      }
-
-      setSession(data)
-      setTimeLeft(getSessionTimeLeft(data))
-      setLoading(false)
-      return
-    }
-
     setLoading(true)
 
     scheduleApi.get(id)
@@ -185,13 +164,13 @@ export default function LiveAudioRoomPage() {
 
   // Join room on load
   useEffect(() => {
-    if (loading || !session || !id || id.startsWith('s')) return
+    if (loading || !session || !id) return
     scheduleApi.joinRoom(id).catch(() => {})
   }, [loading, session, id])
 
   // 1. Audio Recording Loop for Host/Moderator (Generates Standalone Self-Contained Audio Chunks)
   useEffect(() => {
-    if (loading || !session || !id || id.startsWith('s')) return
+    if (loading || !session || !id) return
 
     let isRecordingActive = true
     let recordingTimer: any = null
@@ -344,31 +323,6 @@ export default function LiveAudioRoomPage() {
 
     // 2-second Sync loop
     const syncInterval = setInterval(() => {
-      if (id.startsWith('s')) {
-        // Mock simulation behavior:
-        setListenerCount(prev => Math.max(10, prev + (Math.random() > 0.5 ? 1 : -1)))
-        
-        // Add random mock message occasionally
-        if (Math.random() > 0.7) {
-          const names = ['Sarah', 'David', 'James', 'Grace', 'Emmanuel', 'Priscilla']
-          const texts = ['Amen! 🙏', 'Praying with you all.', 'Praise God!', 'Mercy Lord.', 'Standing in agreement.']
-          const randomName = names[Math.floor(Math.random() * names.length)]
-          const randomText = texts[Math.floor(Math.random() * texts.length)]
-          
-          setMessages(prev => [
-            ...prev,
-            {
-              id: Math.random().toString(),
-              user: randomName,
-              text: randomText,
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              isAmen: randomText.includes('Amen')
-            }
-          ])
-        }
-        return
-      }
-
       // 1. Send Heartbeat to keep active list correct
       scheduleApi.sendHeartbeat(id)
         .then(res => {
