@@ -613,10 +613,24 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             })
             
         # Get new audio chunks
-        chunks_qs = LiveAudioChunk.objects.filter(session=session)
-        if last_seq and last_seq.isdigit():
-            chunks_qs = chunks_qs.filter(sequence__gt=int(last_seq))
-        chunks_data = [{'sequence': c.sequence, 'url': c.url} for c in chunks_qs[:15]]
+        chunks_qs = LiveAudioChunk.objects.filter(session=session).order_by('sequence')
+        if last_seq is not None and last_seq != '' and last_seq != '-1':
+            try:
+                seq_int = int(last_seq)
+                chunks_qs = chunks_qs.filter(sequence__gt=seq_int)
+            except ValueError:
+                pass
+        elif last_seq == '-1':
+            # For new listeners, take the latest active chunk
+            latest = chunks_qs.last()
+            chunks_qs = [latest] if latest else []
+
+        def sanitize_url(raw_url):
+            if raw_url.startswith('http://') and not ('localhost' in raw_url or '127.0.0.1' in raw_url):
+                return 'https://' + raw_url[7:]
+            return raw_url
+
+        chunks_data = [{'sequence': c.sequence, 'url': sanitize_url(c.url)} for c in chunks_qs[:15]]
             
         old_reactions = LiveRoomReaction.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(minutes=1))
         old_reactions.delete()
@@ -686,17 +700,20 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         from django.conf import settings
         
         # Save file to default storage
-        ext = '.webm' if 'webm' in uploaded_file.content_type else '.mp4'
+        content_type = uploaded_file.content_type or ''
+        ext = '.webm' if 'webm' in content_type else ('.mp4' if 'mp4' in content_type else '.webm')
         filename = f"{session.id}_{sequence}_{uuid.uuid4()}{ext}"
         path = default_storage.save(os.path.join('live_audio', filename), ContentFile(uploaded_file.read()))
         url = request.build_absolute_uri(settings.MEDIA_URL + path)
+        if url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
+            url = 'https://' + url[7:]
         
         from .models import LiveAudioChunk
         LiveAudioChunk.objects.create(session=session, sequence=sequence, url=url)
         
-        # Auto delete old chunks (> 60 seconds old) to save disk space
+        # Auto delete old chunks (> 90 seconds old) to save disk space
         from django.utils import timezone
-        old_chunks = LiveAudioChunk.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(seconds=60))
+        old_chunks = LiveAudioChunk.objects.filter(session=session, created_at__lt=timezone.now() - timezone.timedelta(seconds=90))
         for oc in old_chunks:
             try:
                 rel_path = oc.url.split(settings.MEDIA_URL)[-1]

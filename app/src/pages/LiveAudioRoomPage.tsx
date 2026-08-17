@@ -189,53 +189,92 @@ export default function LiveAudioRoomPage() {
     scheduleApi.joinRoom(id).catch(() => {})
   }, [loading, session, id])
 
-  // 1. Audio Recording Loop for Host/Moderator
+  // 1. Audio Recording Loop for Host/Moderator (Generates Standalone Self-Contained Audio Chunks)
   useEffect(() => {
     if (loading || !session || !id || id.startsWith('s')) return
 
-    stopRecording()
+    let isRecordingActive = true
+    let recordingTimer: any = null
 
     if (isHostSpeaker && !isMuted) {
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
+          if (!isRecordingActive) {
+            stream.getTracks().forEach(t => t.stop())
+            return
+          }
           localStreamRef.current = stream
 
-          // Determine standard audio mimeType supported by the browser
-          let mimeType = 'audio/webm'
+          // Check browser codec support
+          let mimeType = 'audio/webm;codecs=opus'
           if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = 'audio/mp4' // iOS Safari fallback
+            mimeType = 'audio/webm'
             if (!MediaRecorder.isTypeSupported(mimeType)) {
-              mimeType = '' // Default native format
-            }
-          }
-
-          const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-          mediaRecorderRef.current = recorder
-
-          recorder.ondataavailable = async (e) => {
-            if (e.data && e.data.size > 0) {
-              const currentSeq = sequenceCounterRef.current++
-              console.log(`Uploading audio chunk #${currentSeq} (${e.data.size} bytes)`)
-              try {
-                await scheduleApi.uploadAudio(id, currentSeq, e.data)
-              } catch (err) {
-                console.error('Audio chunk upload failed:', err)
+              mimeType = 'audio/mp4' // iOS Safari fallback
+              if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = '' // Browser native fallback
               }
             }
           }
 
-          // Trigger data slice every 3 seconds (3000ms)
-          recorder.start(3000)
-          console.log(`MediaRecorder started with format: ${mimeType || 'default'}`)
+          const recordChunk = () => {
+            if (!isRecordingActive || !localStreamRef.current) return
+
+            try {
+              const recorder = new MediaRecorder(localStreamRef.current, mimeType ? { mimeType } : undefined)
+              mediaRecorderRef.current = recorder
+              const chunks: Blob[] = []
+
+              recorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                  chunks.push(e.data)
+                }
+              }
+
+              recorder.onstop = async () => {
+                if (chunks.length > 0 && isRecordingActive) {
+                  const blobType = mimeType || recorder.mimeType || 'audio/webm'
+                  const completeBlob = new Blob(chunks, { type: blobType })
+                  if (completeBlob.size > 400) {
+                    const currentSeq = sequenceCounterRef.current++
+                    console.log(`[Live Audio] Uploading chunk #${currentSeq} (${completeBlob.size} bytes)`)
+                    try {
+                      await scheduleApi.uploadAudio(id, currentSeq, completeBlob)
+                    } catch (err) {
+                      console.error('[Live Audio] Chunk upload failed:', err)
+                    }
+                  }
+                }
+                // Continue loop immediately if still actively broadcasting
+                if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
+                  recordChunk()
+                }
+              }
+
+              recorder.start()
+              // Record 2.5 seconds per standalone chunk
+              recordingTimer = setTimeout(() => {
+                if (recorder.state === 'recording') {
+                  recorder.stop()
+                }
+              }, 2500)
+            } catch (err) {
+              console.error('[Live Audio] MediaRecorder loop error:', err)
+            }
+          }
+
+          recordChunk()
         })
         .catch(err => {
-          console.error('Failed to get microphone stream:', err)
+          console.error('[Live Audio] Microphone error:', err)
           toast.error('Microphone access is required to host the live audio room.')
           setIsMuted(true)
         })
     }
 
     return () => {
+      isRecordingActive = false
+      if (recordingTimer) clearTimeout(recordingTimer)
       stopRecording()
     }
   }, [loading, session, id, isHostSpeaker, isMuted])
@@ -255,7 +294,8 @@ export default function LiveAudioRoomPage() {
 
     isPlayingRef.current = true
     const nextUrl = audioQueueRef.current.shift()!
-    const audio = new Audio(nextUrl)
+    const secureUrl = getMediaUrl(nextUrl) || nextUrl
+    const audio = new Audio(secureUrl)
     currentAudioRef.current = audio
     audio.volume = isDeafenedRef.current ? 0 : 1
 
@@ -264,13 +304,12 @@ export default function LiveAudioRoomPage() {
     }
 
     audio.onerror = (e) => {
-      console.error('Audio playback chunk error:', e)
+      console.warn('[Live Audio] Playback chunk error (advancing to next):', e)
       playNextChunk()
     }
 
     audio.play().catch(err => {
-      console.warn('Audio play autoplay blocked:', err)
-      // Put the chunk back at the beginning of the queue so we don't lose it.
+      console.warn('[Live Audio] Autoplay blocked by browser policy:', err)
       audioQueueRef.current.unshift(nextUrl)
       isPlayingRef.current = false
       setIsAutoplayBlocked(true)
@@ -280,7 +319,7 @@ export default function LiveAudioRoomPage() {
   const unlockAudioPlayback = () => {
     setIsAutoplayBlocked(false)
     isAutoplayBlockedRef.current = false
-    if (!isPlayingRef.current) {
+    if (!isPlayingRef.current && audioQueueRef.current.length > 0) {
       playNextChunk()
     }
   }
@@ -366,17 +405,21 @@ export default function LiveAudioRoomPage() {
           if (!isModeratorRef.current && !isDeafenedRef.current && Array.isArray(data.audio_chunks) && data.audio_chunks.length > 0) {
             // Sort ascending by sequence
             const sortedChunks = [...data.audio_chunks].sort((a, b) => a.sequence - b.sequence)
-            const newUrls = sortedChunks.map(c => c.url)
+            const newUrls: string[] = []
             
-            audioQueueRef.current.push(...newUrls)
-            
-            const maxSeq = Math.max(...sortedChunks.map(c => c.sequence))
-            if (maxSeq > lastSequenceRef.current) {
-              lastSequenceRef.current = maxSeq
+            for (const c of sortedChunks) {
+              if (c.sequence > lastSequenceRef.current) {
+                lastSequenceRef.current = c.sequence
+                const secureUrl = getMediaUrl(c.url) || c.url
+                if (secureUrl) newUrls.push(secureUrl)
+              }
             }
-
-            if (!isPlayingRef.current) {
-              playNextChunk()
+            
+            if (newUrls.length > 0) {
+              audioQueueRef.current.push(...newUrls)
+              if (!isPlayingRef.current) {
+                playNextChunk()
+              }
             }
           }
 
