@@ -1,5 +1,9 @@
-// Django REST API client – falls back to localhost in development
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000') + '/api';
+// Django REST API client – automatically targets Render production or local dev
+const defaultBackend = (typeof window !== 'undefined' && (window.location.hostname.includes('onrender.com') || import.meta.env.PROD))
+  ? 'https://eleven-backend-r9y1.onrender.com'
+  : 'http://localhost:8000';
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? defaultBackend).replace(/\/api\/?$/, '') + '/api';
 
 let csrfToken: string | null = null;
 

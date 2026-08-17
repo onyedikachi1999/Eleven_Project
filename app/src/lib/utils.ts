@@ -12,12 +12,15 @@ export function getMediaUrl(url: string | null | undefined): string | undefined 
   
   // If relative path like /media/...
   if (clean.startsWith('/')) {
-    const rawBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-    const cleanBase = rawBase.replace(/\/api\/?$/, '')
+    const defaultBackend = (typeof window !== 'undefined' && (window.location.hostname.includes('onrender.com') || import.meta.env.PROD))
+      ? 'https://eleven-backend-r9y1.onrender.com'
+      : 'http://localhost:8000';
+    const rawBase = import.meta.env.VITE_API_BASE_URL || defaultBackend;
+    const cleanBase = rawBase.replace(/\/api\/?$/, '');
     const baseWithHttps = (cleanBase.startsWith('http://') && !cleanBase.includes('localhost') && !cleanBase.includes('127.0.0.1'))
       ? 'https://' + cleanBase.slice(7)
-      : cleanBase
-    return `${baseWithHttps}${clean}`
+      : cleanBase;
+    return `${baseWithHttps}${clean}`;
   }
   
   // Force https in production (unless localhost)

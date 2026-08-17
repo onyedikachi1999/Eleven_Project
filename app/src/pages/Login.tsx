@@ -5,10 +5,6 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { authApi } from '@/lib/api'
 import ElevenFaithBanner from '@/components/ElevenFaithBanner'
-
-// API base fallback
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000') + '/api'
-
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -16,21 +12,11 @@ export default function Login() {
 
   const handleGoogleCredentialResponse = async (response: any) => {
     try {
-      const res = await fetch(`${API_BASE}/auth/google/`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: response.credential }),
-      })
-      if (res.ok) {
-        toast.success('Welcome to ElevenFaith!')
-        window.location.href = '/'
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Google authentication failed')
-      }
-    } catch {
-      toast.error('Connection failed. Is the Django server running?')
+      await authApi.googleAuth(response.credential)
+      toast.success('Welcome to ElevenFaith!')
+      window.location.href = '/'
+    } catch (err: any) {
+      toast.error(err.message || 'Google authentication failed')
     }
   }
 
