@@ -227,6 +227,8 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
     def create(self, request):
         if not request.user.is_authenticated:
             return Response({'detail': 'Authentication required'}, status=401)
+        if request.user.subscription_plan not in ['regular', 'premium'] and request.user.role != 'admin' and not request.user.is_staff:
+            return Response({'detail': 'Only Regular and Premium members can create prayer circles. Please upgrade your plan.'}, status=403)
         serializer = PrayerCircleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         circle = serializer.save(created_by=request.user)
@@ -388,10 +390,12 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
     serializer_class = ScheduledPrayerSerializer
 
     def perform_create(self, serializer):
-        is_live = self.request.data.get('is_live', False)
-        if is_live and self.request.user.subscription_plan != 'premium' and self.request.user.role != 'admin':
+        if not self.request.user.is_authenticated:
+            from rest_framework.exceptions import NotAuthenticated
+            raise NotAuthenticated("Authentication required.")
+        if self.request.user.subscription_plan != 'premium' and self.request.user.role != 'admin' and not self.request.user.is_staff:
             from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only Premium members can go live.")
+            raise PermissionDenied("Only Premium members can schedule or host live prayer sessions. Please upgrade your plan to Premium.")
         serializer.save(host=self.request.user)
 
     def retrieve(self, request, *args, **kwargs):

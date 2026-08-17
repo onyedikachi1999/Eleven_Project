@@ -39,7 +39,8 @@ function formatDate(date: string | null) {
 }
 
 function CreateSessionModal({ onSuccess }: { onSuccess: () => void }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user, isAdmin } = useAuth()
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
@@ -48,10 +49,16 @@ function CreateSessionModal({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  const isPremium = isAdmin || user?.subscription_plan === 'premium'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isAuthenticated) {
       toast.error('Please sign in first')
+      return
+    }
+    if (!isPremium) {
+      toast.error('Only Premium members can schedule live prayer sessions.')
       return
     }
     if (!title.trim() || !scheduledAt) {
@@ -94,40 +101,71 @@ function CreateSessionModal({ onSuccess }: { onSuccess: () => void }) {
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Schedule a Prayer Session</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div>
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning Grace Prayer Watch" required minLength={3} className="mt-1" />
+
+        {!isAuthenticated ? (
+          <div className="py-6 text-center space-y-4">
+            <p className="text-sm text-stone-600">Please sign in to schedule or host live prayer sessions.</p>
+            <Button className="rounded-lg text-white" style={{ background: 'var(--eleven-accent)' }} onClick={() => { setOpen(false); navigate('/login'); }}>
+              Sign In
+            </Button>
           </div>
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the focus or topic of this prayer watch..." rows={3} className="mt-1 resize-y" />
+        ) : !isPremium ? (
+          <div className="py-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-2xl shadow-sm">
+              👑
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-display text-lg font-bold text-stone-800">Premium Feature</h3>
+              <p className="text-xs text-stone-600 max-w-sm mx-auto">
+                Scheduling and hosting live prayer sessions is exclusively reserved for <strong>Premium</strong> members.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <Button className="w-full rounded-lg text-white font-semibold" style={{ background: 'var(--eleven-accent)' }} onClick={() => { setOpen(false); navigate('/pricing'); }}>
+                Upgrade to Premium
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="text-xs text-stone-500">
+                Cancel
+              </Button>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4 mt-2">
             <div>
-              <Label htmlFor="scheduledAt">Start Date & Time</Label>
-              <Input id="scheduledAt" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} required className="mt-1" />
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning Grace Prayer Watch" required minLength={3} className="mt-1" />
             </div>
             <div>
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input id="duration" type="number" min={5} max={360} value={duration} onChange={e => setDuration(e.target.value)} required className="mt-1" />
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the focus or topic of this prayer watch..." rows={3} className="mt-1 resize-y" />
             </div>
-          </div>
-          <div className="flex items-center gap-2 pt-1">
-            <Checkbox id="isLive" checked={isLive} onCheckedChange={v => setIsLive(v as boolean)} />
-            <Label htmlFor="isLive" className="text-sm font-normal cursor-pointer">Start as live session immediately</Label>
-          </div>
-          <Button type="submit" className="w-full rounded-lg font-semibold" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>
-            {submitting ? 'Creating...' : 'Schedule Session'}
-          </Button>
-        </form>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="scheduledAt">Start Date & Time</Label>
+                <Input id="scheduledAt" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} required className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Input id="duration" type="number" min={5} max={360} value={duration} onChange={e => setDuration(e.target.value)} required className="mt-1" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox id="isLive" checked={isLive} onCheckedChange={v => setIsLive(v as boolean)} />
+              <Label htmlFor="isLive" className="text-sm font-normal cursor-pointer">Start as live session immediately</Label>
+            </div>
+            <Button type="submit" className="w-full rounded-lg font-semibold text-white" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>
+              {submitting ? 'Creating...' : 'Schedule Session'}
+            </Button>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )
 }
 
 function CreateCircleModal({ onSuccess }: { onSuccess: () => void }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user, isAdmin } = useAuth()
+  const navigate = useNavigate()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('general')
@@ -135,10 +173,16 @@ function CreateCircleModal({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  const canCreateCircle = isAdmin || user?.subscription_plan === 'regular' || user?.subscription_plan === 'premium'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isAuthenticated) {
       toast.error('Please sign in first')
+      return
+    }
+    if (!canCreateCircle) {
+      toast.error('Only Regular and Premium members can create prayer circles.')
       return
     }
     if (!name.trim()) {
@@ -178,36 +222,66 @@ function CreateCircleModal({ onSuccess }: { onSuccess: () => void }) {
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Create a Prayer Circle</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div>
-            <Label htmlFor="circle-name">Circle Name</Label>
-            <Input id="circle-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Daily Intercessors" required minLength={3} className="mt-1" />
+
+        {!isAuthenticated ? (
+          <div className="py-6 text-center space-y-4">
+            <p className="text-sm text-stone-600">Please sign in to create and manage prayer circles.</p>
+            <Button className="rounded-lg text-white" style={{ background: 'var(--eleven-accent)' }} onClick={() => { setOpen(false); navigate('/login'); }}>
+              Sign In
+            </Button>
           </div>
-          <div>
-            <Label htmlFor="circle-category">Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="circle-category" className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {['general', 'healing', 'finance', 'family', 'career', 'deliverance'].map(cat => (
-                  <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        ) : !canCreateCircle ? (
+          <div className="py-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mx-auto text-2xl shadow-sm">
+              ✨
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-display text-lg font-bold text-stone-800">Regular & Premium Feature</h3>
+              <p className="text-xs text-stone-600 max-w-sm mx-auto">
+                Creating and leading prayer circles is available to <strong>Regular</strong> and <strong>Premium</strong> members.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <Button className="w-full rounded-lg text-white font-semibold" style={{ background: 'var(--eleven-accent)' }} onClick={() => { setOpen(false); navigate('/pricing'); }}>
+                Upgrade to Regular
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="text-xs text-stone-500">
+                Cancel
+              </Button>
+            </div>
           </div>
-          <div>
-            <Label htmlFor="circle-description">Description</Label>
-            <Textarea id="circle-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="What is the purpose or focus of this circle?" rows={3} className="mt-1 resize-y" />
-          </div>
-          <div className="flex items-center gap-2 pt-1">
-            <Checkbox id="circle-public" checked={isPublic} onCheckedChange={v => setIsPublic(v as boolean)} />
-            <Label htmlFor="circle-public" className="text-sm font-normal cursor-pointer">Make this circle public (anyone can view and join)</Label>
-          </div>
-          <Button type="submit" className="w-full rounded-lg font-semibold" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>
-            {submitting ? 'Creating...' : 'Create Circle'}
-          </Button>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+            <div>
+              <Label htmlFor="circle-name">Circle Name</Label>
+              <Input id="circle-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Daily Intercessors" required minLength={3} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="circle-category">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="circle-category" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['general', 'healing', 'finance', 'family', 'career', 'deliverance'].map(cat => (
+                    <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="circle-description">Description</Label>
+              <Textarea id="circle-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="What is the purpose or focus of this circle?" rows={3} className="mt-1 resize-y" />
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox id="circle-public" checked={isPublic} onCheckedChange={v => setIsPublic(v as boolean)} />
+              <Label htmlFor="circle-public" className="text-sm font-normal cursor-pointer">Make this circle public (anyone can view and join)</Label>
+            </div>
+            <Button type="submit" className="w-full rounded-lg font-semibold text-white" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>
+              {submitting ? 'Creating...' : 'Create Circle'}
+            </Button>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )
