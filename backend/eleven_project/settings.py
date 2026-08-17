@@ -95,19 +95,31 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'api.User'
 
-# CORS — allow all in dev, restrict to known origins in production
+# CORS — allow all in dev, allow all onrender.com subdomains & configured origins
 _CORS_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '')
 if _CORS_ORIGINS:
     CORS_ALLOWED_ORIGINS = [o.strip() for o in _CORS_ORIGINS.split(',') if o.strip()]
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^https://.*\.onrender\.com$",
+        r"^http://localhost:\d+$",
+        r"^http://127\.0\.0\.1:\d+$",
+    ]
 else:
     CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_CREDENTIALS = True
 
-# CSRF trusted origins — required for cross-origin POST requests
+# CSRF trusted origins — required for cross-origin requests
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    'https://eleven-frontend-tr2s.onrender.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+]
 _CSRF_TRUSTED = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 if _CSRF_TRUSTED:
-    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _CSRF_TRUSTED.split(',') if o.strip()]
+    CSRF_TRUSTED_ORIGINS.extend([o.strip() for o in _CSRF_TRUSTED.split(',') if o.strip()])
 
 # Cookie settings for cross-origin auth (frontend and backend on different domains)
 SESSION_COOKIE_HTTPONLY = True
@@ -130,8 +142,8 @@ if not DEBUG:
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',

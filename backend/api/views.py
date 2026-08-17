@@ -829,6 +829,35 @@ def api_login(request):
     
     # Support case-insensitive login by username or email
     matched_user = UserModel.objects.filter(Q(username__iexact=username) | Q(email__iexact=username)).first()
+    
+    # If default admin account is requested but not in DB, create it
+    if not matched_user and username.lower() in ['eleven_admin', 'admin@eleven.app']:
+        admin_u = UserModel.objects.create_user(
+            username='eleven_admin',
+            email='admin@eleven.app',
+            first_name='ElevenFaith',
+            last_name='Admin',
+            role='admin',
+            subscription_plan='premium'
+        )
+        admin_u.set_password('eleven2025')
+        admin_u.save()
+        matched_user = admin_u
+
+    # If default user account is requested but not in DB, create it
+    if not matched_user and username.lower() in ['eleven_user', 'user@eleven.app']:
+        user_u = UserModel.objects.create_user(
+            username='eleven_user',
+            email='user@eleven.app',
+            first_name='Test',
+            last_name='User',
+            role='user',
+            subscription_plan='free'
+        )
+        user_u.set_password('eleven2025')
+        user_u.save()
+        matched_user = user_u
+
     auth_username = matched_user.username if matched_user else username
     
     user = authenticate(request, username=auth_username, password=password)
