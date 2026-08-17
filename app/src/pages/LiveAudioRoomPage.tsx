@@ -297,7 +297,8 @@ export default function LiveAudioRoomPage() {
     if (loading || !session || !id) return
 
     let isRecordingActive = true
-    let recordingTimer: any = null
+    let recordingTimeout: any = null
+    let activeStream: MediaStream | null = null
 
     if (isHostSpeaker && !isMuted) {
       navigator.mediaDevices.getUserMedia({
@@ -312,9 +313,10 @@ export default function LiveAudioRoomPage() {
             stream.getTracks().forEach(t => t.stop())
             return
           }
+          activeStream = stream
           localStreamRef.current = stream
 
-          // Check browser codec support
+          // Determine supported MIME type
           let mimeType = 'audio/webm;codecs=opus'
           if (!MediaRecorder.isTypeSupported(mimeType)) {
             mimeType = 'audio/webm'
@@ -326,11 +328,11 @@ export default function LiveAudioRoomPage() {
             }
           }
 
-          const recordChunk = () => {
-            if (!isRecordingActive || !localStreamRef.current) return
+          const recordSegment = () => {
+            if (!isRecordingActive || !activeStream) return
 
             try {
-              const recorder = new MediaRecorder(localStreamRef.current, mimeType ? { mimeType } : undefined)
+              const recorder = new MediaRecorder(activeStream, mimeType ? { mimeType } : undefined)
               mediaRecorderRef.current = recorder
               const chunks: Blob[] = []
 
@@ -341,48 +343,50 @@ export default function LiveAudioRoomPage() {
               }
 
               recorder.onstop = () => {
-                // Immediately start the next segment so no microphone speech is lost!
-                if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
-                  recordChunk()
-                }
-
-                // Asynchronously upload the completed standalone chunk in background
-                if (chunks.length > 0) {
+                if (chunks.length > 0 && isRecordingActive) {
                   const blobType = mimeType || recorder.mimeType || 'audio/webm'
                   const completeBlob = new Blob(chunks, { type: blobType })
-                  if (completeBlob.size > 300) {
+                  if (completeBlob.size > 50) {
                     const currentSeq = sequenceCounterRef.current++
                     scheduleApi.uploadAudio(id, currentSeq, completeBlob).catch(err => {
-                      console.warn('[Live Audio] Audio chunk upload error:', err)
+                      console.warn('[Live Audio] Audio upload error:', err)
                     })
                   }
+                }
+
+                // Schedule next standalone segment with a small release tick
+                if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
+                  recordingTimeout = setTimeout(recordSegment, 40)
                 }
               }
 
               recorder.start()
-              // 2-second standalone chunks for responsive low-latency streaming
-              recordingTimer = setTimeout(() => {
+              // 1.5-second standalone chunks for responsive low-latency streaming
+              recordingTimeout = setTimeout(() => {
                 if (recorder.state === 'recording') {
                   recorder.stop()
                 }
-              }, 2000)
+              }, 1500)
             } catch (err) {
               console.error('[Live Audio] MediaRecorder error:', err)
+              if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
+                recordingTimeout = setTimeout(recordSegment, 500)
+              }
             }
           }
 
-          recordChunk()
+          recordSegment()
         })
         .catch(err => {
           console.error('[Live Audio] Microphone error:', err)
-          toast.error('Microphone access is required to host the live audio room.')
+          toast.error('Microphone access is required to host the live audio room. Please check browser permissions.')
           setIsMuted(true)
         })
     }
 
     return () => {
       isRecordingActive = false
-      if (recordingTimer) clearTimeout(recordingTimer)
+      if (recordingTimeout) clearTimeout(recordingTimeout)
       stopRecording()
     }
   }, [loading, session, id, isHostSpeaker, isMuted])
@@ -812,18 +816,50 @@ export default function LiveAudioRoomPage() {
             {session.description || 'Leading live prayer intercession and testimonies.'}
           </p>
 
-          {/* Live Equalizer Visualizer Bars */}
-          <div className="flex items-center gap-1.5 h-8 mt-5">
-            {[40, 70, 100, 60, 90, 45, 80, 55, 95, 50, 75].map((h, i) => (
-              <div
-                key={i}
-                className="w-1.5 bg-gradient-to-t from-emerald-500 to-blue-400 rounded-full transition-all duration-150"
-                style={{
-                  height: isMuted ? '6px' : `${Math.max(6, (h * audioLevel) / 100)}px`,
-                  opacity: isMuted ? 0.3 : 0.9,
-                }}
-              />
-            ))}
+          {/* Live Equalizer Visualizer Bars & Status */}
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <div className="flex items-center gap-1.5 h-8">
+              {[40, 70, 100, 60, 90, 45, 80, 55, 95, 50, 75].map((h, i) => (
+                <div
+                  key={i}
+                  className={`w-1.5 rounded-full transition-all duration-150 ${
+                    isMuted ? 'bg-stone-600' : 'bg-gradient-to-t from-emerald-500 to-emerald-300'
+                  }`}
+                  style={{
+                    height: isMuted ? '6px' : `${Math.max(6, (h * audioLevel) / 100)}px`,
+                    opacity: isMuted ? 0.3 : 0.9,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Direct Stage Call-To-Action for Host and Listeners */}
+            {isHostSpeaker ? (
+              isMuted ? (
+                <Button
+                  onClick={toggleMic}
+                  size="sm"
+                  className="rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-5 py-1.5 shadow-lg animate-pulse flex items-center gap-2 cursor-pointer mt-1"
+                >
+                  <MicOff size={14} /> You are Muted — Click to Start Speaking Live
+                </Button>
+              ) : (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold mt-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>BROADCASTING AUDIO LIVE</span>
+                </div>
+              )
+            ) : (
+              <Button
+                onClick={unlockAudioPlayback}
+                size="sm"
+                variant="outline"
+                className="rounded-full bg-white/5 border-emerald-500/40 hover:bg-white/10 text-emerald-300 font-semibold text-xs px-4 py-1.5 flex items-center gap-2 cursor-pointer mt-1"
+              >
+                <Volume2 size={14} className="text-emerald-400 animate-pulse" />
+                <span>Live Audio Stream Connected</span>
+              </Button>
+            )}
           </div>
         </div>
 
