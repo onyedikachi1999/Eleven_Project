@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { forumApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -54,40 +55,109 @@ function TopicRow({ topic }: { topic: any }) {
 }
 
 function NewTopicDialog({ onSuccess }: { onSuccess: () => void }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user, isAdmin } = useAuth()
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [category, setCategory] = useState('general')
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  const canPost = isAdmin || user?.subscription_plan === 'regular' || user?.subscription_plan === 'premium'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isAuthenticated) { toast('Please sign in first'); return }
+    if (!isAuthenticated) {
+      toast.error('Please sign in first')
+      return
+    }
+    if (!canPost) {
+      toast.error('Only Regular and Premium members can start discussions.')
+      return
+    }
     if (!title.trim() || !content.trim()) return
     setSubmitting(true)
     try {
       await forumApi.createTopic({ title: title.trim(), content: content.trim(), category })
-      setOpen(false); setTitle(''); setContent(''); setCategory('general')
-      toast('Topic created!')
+      setOpen(false)
+      setTitle('')
+      setContent('')
+      setCategory('general')
+      toast.success('Discussion created!')
       onSuccess()
-    } catch (err: any) { toast.error(err.message) }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create discussion')
+    }
     setSubmitting(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="rounded-full font-medium text-xs" style={{ background: 'var(--eleven-accent)' }}><Plus size={14} className="mr-1.5" />New Discussion</Button>
+        <Button size="sm" className="rounded-full font-medium text-xs text-white" style={{ background: 'var(--eleven-accent)' }}>
+          <Plus size={14} className="mr-1.5" />New Discussion
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle className="font-display text-xl">Start a Discussion</DialogTitle></DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div><Label>Title</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="What's on your mind?" required minLength={3} className="mt-1" /></div>
-          <div><Label>Category</Label><Select value={category} onValueChange={setCategory}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{forumCategories.filter(c => c.value !== 'all').map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label>Content</Label><Textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Share your thoughts..." required minLength={5} rows={5} className="mt-1 resize-y" /></div>
-          <Button type="submit" className="w-full rounded-lg font-semibold" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>{submitting ? 'Posting...' : 'Post Discussion'}</Button>
-        </form>
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl">Start a Discussion</DialogTitle>
+        </DialogHeader>
+
+        {!isAuthenticated ? (
+          <div className="py-6 text-center space-y-4">
+            <p className="text-sm text-stone-600">Please sign in to start a community discussion.</p>
+            <Button className="rounded-lg text-white" style={{ background: 'var(--eleven-accent)' }} onClick={() => { setOpen(false); navigate('/login'); }}>
+              Sign In
+            </Button>
+          </div>
+        ) : !canPost ? (
+          <div className="py-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mx-auto text-2xl shadow-sm">
+              💬
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-display text-lg font-bold text-stone-800">Regular & Premium Feature</h3>
+              <p className="text-xs text-stone-600 max-w-sm mx-auto">
+                Starting discussions and posting in the community forum is available to <strong>Regular</strong> and <strong>Premium</strong> members.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <Button className="w-full rounded-lg text-white font-semibold" style={{ background: 'var(--eleven-accent)' }} onClick={() => { setOpen(false); navigate('/pricing'); }}>
+                Upgrade to Regular
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="text-xs text-stone-500">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+            <div>
+              <Label>Title</Label>
+              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="What's on your mind?" required minLength={3} className="mt-1" />
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {forumCategories.filter(c => c.value !== 'all').map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Content</Label>
+              <Textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Share your thoughts..." required minLength={5} rows={5} className="mt-1 resize-y" />
+            </div>
+            <Button type="submit" className="w-full rounded-lg font-semibold text-white" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>
+              {submitting ? 'Posting...' : 'Post Discussion'}
+            </Button>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -743,6 +743,8 @@ class ForumTopicViewSet(viewsets.ModelViewSet):
     def create(self, request):
         if not request.user.is_authenticated:
             return Response({'detail': 'Authentication required'}, status=401)
+        if request.user.subscription_plan not in ['regular', 'premium'] and request.user.role != 'admin' and not request.user.is_staff:
+            return Response({'detail': 'Only Regular and Premium members can start discussions in the community forum. Please upgrade your plan.'}, status=403)
         serializer = ForumTopicSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         topic = serializer.save(user=request.user)
@@ -760,6 +762,8 @@ class ForumTopicViewSet(viewsets.ModelViewSet):
     def add_reply(self, request, pk=None):
         if not request.user.is_authenticated:
             return Response({'detail': 'Authentication required'}, status=401)
+        if request.user.subscription_plan not in ['regular', 'premium'] and request.user.role != 'admin' and not request.user.is_staff:
+            return Response({'detail': 'Only Regular and Premium members can reply to discussions in the community forum. Please upgrade your plan.'}, status=403)
         topic = self.get_object()
         content = request.data.get('content', '')
         if not content:
