@@ -80,6 +80,15 @@ class LiveStreamAudioEngine {
         console.warn('AudioContext resume failed:', e)
       }
     }
+    // Touch-play silent audio buffer to unlock iOS Safari & Android audio subsystem
+    try {
+      const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==')
+      silentAudio.volume = 0.01
+      const p = silentAudio.play()
+      if (p !== undefined) {
+        p.then(() => silentAudio.pause()).catch(() => {})
+      }
+    } catch {}
   }
 
   public async queueAndPlay(sequence: number, url: string) {
@@ -93,9 +102,8 @@ class LiveStreamAudioEngine {
     }
 
     this.initContext()
-    if (!this.ctx || !this.gainNode) return
 
-    if (this.ctx.state === 'suspended') {
+    if (this.ctx && this.ctx.state === 'suspended') {
       try {
         await this.ctx.resume()
       } catch {
@@ -103,38 +111,49 @@ class LiveStreamAudioEngine {
       }
     }
 
-    // Try native HTML Audio element first for guaranteed container decoding (WebM, MP4, AAC)
+    // Try HTMLAudioElement for direct container playback
+    let htmlAudioSuccess = false
     try {
       const audio = new Audio(url)
       audio.volume = this.isMutedOrDeafened ? 0 : 1
       const playPromise = audio.play()
       if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          if (this.onAutoplayBlocked) this.onAutoplayBlocked()
-        })
+        playPromise
+          .then(() => {
+            htmlAudioSuccess = true
+          })
+          .catch(async () => {
+            if (this.onAutoplayBlocked) this.onAutoplayBlocked()
+            // If HTMLAudio is blocked or unsupported (iOS Safari WebM), decode with AudioContext
+            this.decodeAndPlayWebAudio(url)
+          })
       }
     } catch {
-      // Fallback: Web Audio API decode
-      try {
-        const response = await fetch(url)
-        if (!response.ok) return
-        const arrayBuffer = await response.arrayBuffer()
-        const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer)
+      this.decodeAndPlayWebAudio(url)
+    }
+  }
 
-        const source = this.ctx.createBufferSource()
-        source.buffer = audioBuffer
-        source.connect(this.gainNode)
+  private async decodeAndPlayWebAudio(url: string) {
+    if (!this.ctx || !this.gainNode) return
+    try {
+      const response = await fetch(url)
+      if (!response.ok) return
+      const arrayBuffer = await response.arrayBuffer()
+      const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer)
 
-        const currentTime = this.ctx.currentTime
-        if (this.nextPlayTime < currentTime || this.nextPlayTime > currentTime + 6) {
-          this.nextPlayTime = currentTime + 0.05
-        }
+      const source = this.ctx.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(this.gainNode)
 
-        source.start(this.nextPlayTime)
-        this.nextPlayTime += audioBuffer.duration
-      } catch (e) {
-        console.warn('[Audio Engine] Playback error:', e)
+      const currentTime = this.ctx.currentTime
+      if (this.nextPlayTime < currentTime || this.nextPlayTime > currentTime + 6) {
+        this.nextPlayTime = currentTime + 0.05
       }
+
+      source.start(this.nextPlayTime)
+      this.nextPlayTime += audioBuffer.duration
+    } catch (e) {
+      console.warn('[Audio Engine] WebAudio decode error:', e)
     }
   }
 
@@ -860,11 +879,10 @@ export default function LiveAudioRoomPage() {
               <Button
                 onClick={unlockAudioPlayback}
                 size="sm"
-                variant="outline"
-                className="rounded-full bg-white/5 border-emerald-500/40 hover:bg-white/10 text-emerald-300 font-semibold text-xs px-4 py-1.5 flex items-center gap-2 cursor-pointer mt-1"
+                className="rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2 flex items-center gap-2 cursor-pointer mt-1 shadow-lg active:scale-95 transition-all animate-pulse"
               >
-                <Volume2 size={14} className="text-emerald-400 animate-pulse" />
-                <span>Live Audio Stream Connected</span>
+                <Volume2 size={15} className="text-white animate-bounce" />
+                <span>Tap to Listen Live (Unmute Audio)</span>
               </Button>
             )}
           </div>
