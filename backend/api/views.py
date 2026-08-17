@@ -754,35 +754,50 @@ class ForumReplyViewSet(viewsets.ModelViewSet):
     serializer_class = ForumReplySerializer
 
 
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '127.0.0.1')
+
+
 def rate_limit_login(request, username):
-    ip = request.META.get('REMOTE_ADDR', '')
-    cache_key_ip = f"login_fails_ip_{ip}"
-    cache_key_user = f"login_fails_user_{username}"
+    ip = get_client_ip(request)
+    uname = username.strip().lower()
     
-    fails_ip = cache.get(cache_key_ip, 0)
+    cache_key_user = f"login_fails_u_{uname}"
+    cache_key_combo = f"login_fails_combo_{ip}_{uname}"
+    
     fails_user = cache.get(cache_key_user, 0)
+    fails_combo = cache.get(cache_key_combo, 0)
     
-    if fails_ip >= 5 or fails_user >= 5:
+    if fails_user >= 10 or fails_combo >= 10:
         return False
     return True
 
+
 def record_login_failure(request, username):
-    ip = request.META.get('REMOTE_ADDR', '')
-    cache_key_ip = f"login_fails_ip_{ip}"
-    cache_key_user = f"login_fails_user_{username}"
+    ip = get_client_ip(request)
+    uname = username.strip().lower()
     
-    fails_ip = cache.get(cache_key_ip, 0) + 1
+    cache_key_user = f"login_fails_u_{uname}"
+    cache_key_combo = f"login_fails_combo_{ip}_{uname}"
+    
     fails_user = cache.get(cache_key_user, 0) + 1
+    fails_combo = cache.get(cache_key_combo, 0) + 1
     
-    cache.set(cache_key_ip, fails_ip, 300)  # 5 min block
-    cache.set(cache_key_user, fails_user, 300)
+    cache.set(cache_key_user, fails_user, 300)  # 5 min block
+    cache.set(cache_key_combo, fails_combo, 300)
+
 
 def clear_login_failures(request, username):
-    ip = request.META.get('REMOTE_ADDR', '')
-    cache_key_ip = f"login_fails_ip_{ip}"
-    cache_key_user = f"login_fails_user_{username}"
-    cache.delete(cache_key_ip)
+    ip = get_client_ip(request)
+    uname = username.strip().lower()
+    
+    cache_key_user = f"login_fails_u_{uname}"
+    cache_key_combo = f"login_fails_combo_{ip}_{uname}"
     cache.delete(cache_key_user)
+    cache.delete(cache_key_combo)
 
 
 @api_view(['GET'])
@@ -803,7 +818,15 @@ def api_login(request):
     if not rate_limit_login(request, username):
         return Response({'detail': 'Too many failed login attempts. Please try again in 5 minutes.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         
-    user = authenticate(request, username=username, password=password)
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    UserModel = get_user_model()
+    
+    # Support case-insensitive login by username or email
+    matched_user = UserModel.objects.filter(Q(username__iexact=username) | Q(email__iexact=username)).first()
+    auth_username = matched_user.username if matched_user else username
+    
+    user = authenticate(request, username=auth_username, password=password)
     if user:
         django_login(request, user)
         clear_login_failures(request, username)
@@ -812,7 +835,7 @@ def api_login(request):
         return Response({
             'detail': 'Logged in',
             'token': token.key,
-            'user': UserSerializer(user).data
+            'user': UserSerializer(user, context={'request': request}).data
         })
         
     record_login_failure(request, username)

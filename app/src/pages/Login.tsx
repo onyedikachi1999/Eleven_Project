@@ -77,12 +77,12 @@ export default function Login() {
           <CardContent className="space-y-4 pt-4">
             <form onSubmit={handleLogin} className="space-y-3">
               <div>
-                <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--eleven-text-secondary)' }}>Username</label>
+                <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--eleven-text-secondary)' }}>Username or Email</label>
                 <input
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="eleven_user"
+                  placeholder="Username or email address"
                   required
                   className="w-full px-3 py-2.5 rounded-lg text-sm border outline-none transition-colors focus:border-[var(--eleven-accent)]"
                   style={{ background: 'white', borderColor: 'var(--eleven-border)' }}
