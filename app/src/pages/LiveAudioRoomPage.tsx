@@ -210,7 +210,14 @@ export default function LiveAudioRoomPage() {
   // Compute Moderator role
   const isHostSpeaker = Boolean(
     session?.is_host || 
-    (user && session && (user.id === session.host_id || user.is_staff || user.is_superuser || user.plan === 'premium')) ||
+    (user && session && (
+      user.id === session.host_id || 
+      user.role === 'admin' || 
+      (user as any).is_staff || 
+      (user as any).is_superuser || 
+      user.subscription_plan === 'premium' ||
+      (user as any).plan === 'premium'
+    )) ||
     participants.find(p => p.user_id === user?.id)?.isCoModerator
   )
   isModeratorRef.current = isHostSpeaker
@@ -272,8 +279,17 @@ export default function LiveAudioRoomPage() {
         await initializeAudioSequence(id)
         setSession(data)
         setTimeLeft(getSessionTimeLeft(data))
-        // If owner/host, enable speaking
-        if (user?.id === data.host_id || user?.plan === 'premium' || user?.is_staff) {
+        // If owner/host or premium/admin, automatically unmute to broadcast
+        const isSpeakerUser = Boolean(
+          data.is_host ||
+          user?.id === data.host_id ||
+          user?.role === 'admin' ||
+          (user as any)?.is_staff ||
+          (user as any)?.is_superuser ||
+          user?.subscription_plan === 'premium' ||
+          (user as any)?.plan === 'premium'
+        )
+        if (isSpeakerUser) {
           setIsMuted(false)
         }
       })
