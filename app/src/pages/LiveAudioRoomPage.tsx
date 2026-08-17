@@ -103,36 +103,38 @@ class LiveStreamAudioEngine {
       }
     }
 
+    // Try native HTML Audio element first for guaranteed container decoding (WebM, MP4, AAC)
     try {
-      const response = await fetch(url)
-      if (!response.ok) return
-      const arrayBuffer = await response.arrayBuffer()
-      
-      // Decode audio buffer with Web Audio API
-      const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer)
-
-      const source = this.ctx.createBufferSource()
-      source.buffer = audioBuffer
-      source.connect(this.gainNode)
-
-      const currentTime = this.ctx.currentTime
-      // If we fell behind by more than 0.2s or starting fresh, schedule near current time
-      if (this.nextPlayTime < currentTime || this.nextPlayTime > currentTime + 6) {
-        this.nextPlayTime = currentTime + 0.05
-      }
-
-      source.start(this.nextPlayTime)
-      this.nextPlayTime += audioBuffer.duration
-    } catch (err) {
-      console.warn('[Web Audio Engine] Chunk decode fallback:', err)
-      // Fallback: try HTMLAudioElement
-      try {
-        const audio = new Audio(url)
-        audio.volume = this.isMutedOrDeafened ? 0 : 1
-        audio.play().catch(() => {
+      const audio = new Audio(url)
+      audio.volume = this.isMutedOrDeafened ? 0 : 1
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
           if (this.onAutoplayBlocked) this.onAutoplayBlocked()
         })
-      } catch {}
+      }
+    } catch {
+      // Fallback: Web Audio API decode
+      try {
+        const response = await fetch(url)
+        if (!response.ok) return
+        const arrayBuffer = await response.arrayBuffer()
+        const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer)
+
+        const source = this.ctx.createBufferSource()
+        source.buffer = audioBuffer
+        source.connect(this.gainNode)
+
+        const currentTime = this.ctx.currentTime
+        if (this.nextPlayTime < currentTime || this.nextPlayTime > currentTime + 6) {
+          this.nextPlayTime = currentTime + 0.05
+        }
+
+        source.start(this.nextPlayTime)
+        this.nextPlayTime += audioBuffer.duration
+      } catch (e) {
+        console.warn('[Audio Engine] Playback error:', e)
+      }
     }
   }
 
@@ -207,19 +209,14 @@ export default function LiveAudioRoomPage() {
     isAutoplayBlockedRef.current = isAutoplayBlocked
   }, [isAutoplayBlocked])
 
-  // Compute Moderator role
-  const isHostSpeaker = Boolean(
+  // Compute Speaker / Moderator role: Only the actual room creator/host OR an appointed co-moderator is a speaker
+  const isActualHost = Boolean(
     session?.is_host || 
-    (user && session && (
-      user.id === session.host_id || 
-      user.role === 'admin' || 
-      (user as any).is_staff || 
-      (user as any).is_superuser || 
-      user.subscription_plan === 'premium' ||
-      (user as any).plan === 'premium'
-    )) ||
-    participants.find(p => p.user_id === user?.id)?.isCoModerator
+    (user && session && user.id === session.host_id)
   )
+  const isCoMod = Boolean(participants.find(p => p.user_id === user?.id)?.isCoModerator)
+  const isHostSpeaker = isActualHost || isCoMod
+
   isModeratorRef.current = isHostSpeaker
   isMutedRef.current = isMuted
   userIdRef.current = user?.id
@@ -279,18 +276,12 @@ export default function LiveAudioRoomPage() {
         await initializeAudioSequence(id)
         setSession(data)
         setTimeLeft(getSessionTimeLeft(data))
-        // If owner/host or premium/admin, automatically unmute to broadcast
-        const isSpeakerUser = Boolean(
-          data.is_host ||
-          user?.id === data.host_id ||
-          user?.role === 'admin' ||
-          (user as any)?.is_staff ||
-          (user as any)?.is_superuser ||
-          user?.subscription_plan === 'premium' ||
-          (user as any)?.plan === 'premium'
-        )
-        if (isSpeakerUser) {
+        // If owner/host of this specific room, enable broadcasting; otherwise start as listener
+        const isRoomOwner = Boolean(data.is_host || user?.id === data.host_id)
+        if (isRoomOwner) {
           setIsMuted(false)
+        } else {
+          setIsMuted(true)
         }
       })
       .catch((err: any) => {
