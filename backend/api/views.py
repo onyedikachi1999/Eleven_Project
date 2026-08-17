@@ -467,7 +467,23 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
             if s.scheduled_at + timezone.timedelta(minutes=s.duration) < now:
                 past_sessions.append(s)
                 
-        serializer = ScheduledPrayerSerializer(past_sessions[:50], many=True)
+        # Prune old past sessions: keep only the latest 6 and delete older sessions + chunk files to save server space
+        if len(past_sessions) > 6:
+            older_sessions = past_sessions[6:]
+            for old_s in older_sessions:
+                try:
+                    for chunk in old_s.audio_chunks.all():
+                        try:
+                            rel_path = chunk.url.split(settings.MEDIA_URL)[-1]
+                            default_storage.delete(rel_path)
+                        except Exception:
+                            pass
+                    old_s.delete()
+                except Exception:
+                    pass
+            past_sessions = past_sessions[:6]
+                
+        serializer = ScheduledPrayerSerializer(past_sessions[:6], many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])

@@ -351,7 +351,7 @@ export default function JointPrayer() {
           <section className="mt-8">
             <h2 className="font-display text-xl font-semibold mb-4" style={{ color: 'var(--eleven-text)' }}>Past Live Sessions</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-75">
-              {pastSchedules.map(s => (
+              {pastSchedules.slice(0, 6).map(s => (
                 <div key={s.id} className="bg-stone-50 rounded-xl p-5 border border-stone-200 flex flex-col justify-between" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                   <div>
                     <div className="flex items-start justify-between mb-3">
