@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { authApi } from '@/lib/api';
+import { getMediaUrl } from '@/lib/utils';
 
 interface User {
   id: number;
@@ -42,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUser = useCallback(async () => {
     try {
       await authApi.fetchCsrfToken();
-      const data = await authApi.me();
-      setUser({ ...data, name: data.first_name || data.username });
+      const avatar = getMediaUrl(data.avatar);
+      setUser({ ...data, avatar, name: data.first_name || data.username });
     } catch {
       setUser(null);
     } finally {

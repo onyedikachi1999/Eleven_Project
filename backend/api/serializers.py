@@ -6,20 +6,43 @@ from .models import (
 )
 
 
+from django.conf import settings
+
+
 class UserSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'avatar', 'bio', 'role', 'subscription_plan', 'created_at', 'last_sign_in_at']
+
+    def get_avatar(self, obj):
+        if not obj.avatar:
+            return None
+        url = str(obj.avatar).strip()
+        if not url:
+            return None
+        request = self.context.get('request')
+        if url.startswith('/') and request:
+            url = request.build_absolute_uri(url)
+        if not settings.DEBUG and url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
+            url = 'https://' + url[7:]
+        return url
 
 
 class AuthorField(serializers.Field):
     def to_representation(self, value):
         if value is None:
             return None
+        avatar = value.avatar
+        if avatar:
+            avatar = str(avatar).strip()
+            if not settings.DEBUG and avatar.startswith('http://') and not ('localhost' in avatar or '127.0.0.1' in avatar):
+                avatar = 'https://' + avatar[7:]
         return {
             'id': value.id,
             'name': value.get_full_name() or value.username or 'User',
-            'avatar': value.avatar,
+            'avatar': avatar or None,
         }
 
 

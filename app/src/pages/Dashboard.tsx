@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { testimonyApi, prayerApi, authApi } from '@/lib/api'
+import { getMediaUrl } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -141,7 +142,7 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row items-start gap-4">
           <div className="relative group w-20 h-20 shrink-0">
             <Avatar className="w-20 h-20 ring-2 ring-stone-200 shadow-sm">
-              <AvatarImage src={user.avatar || undefined} />
+              <AvatarImage src={getMediaUrl(user.avatar)} />
               <AvatarFallback className="text-2xl font-display font-bold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
                 {(user.name ?? 'U').charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -263,7 +264,7 @@ export default function Dashboard() {
                 <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Avatar Image</Label>
                 <div className="relative group w-28 h-28 rounded-full overflow-hidden border-2 border-stone-200">
                   <Avatar className="w-full h-full">
-                    <AvatarImage src={avatarUrl || undefined} />
+                    <AvatarImage src={getMediaUrl(avatarUrl)} />
                     <AvatarFallback className="text-3xl font-display font-bold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
                       {firstName ? firstName.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>

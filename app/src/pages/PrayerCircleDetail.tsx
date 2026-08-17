@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getMediaUrl } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Users, Lock, Globe, MessageSquare, Send,
@@ -312,7 +313,7 @@ export default function PrayerCircleDetail() {
                     {messages.map(msg => (
                       <div key={msg.id} className="bg-white rounded-xl p-4 border flex gap-3" style={{ borderColor: 'var(--eleven-border)' }}>
                         <Avatar className="w-8 h-8 flex-shrink-0">
-                          <AvatarImage src={msg.author_avatar ?? undefined} />
+                          <AvatarImage src={getMediaUrl(msg.author_avatar)} />
                           <AvatarFallback className="text-xs font-medium" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(msg.author_name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
@@ -365,7 +366,7 @@ export default function PrayerCircleDetail() {
                 <div key={member.id} className="bg-white rounded-xl p-4 border flex items-center justify-between" style={{ borderColor: 'var(--eleven-border)' }}>
                   <div className="flex items-center gap-3">
                     <Avatar className="w-8 h-8">
-                      <AvatarImage src={member.user_avatar ?? undefined} />
+                      <AvatarImage src={getMediaUrl(member.user_avatar)} />
                       <AvatarFallback className="text-xs font-medium" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(member.user_name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>

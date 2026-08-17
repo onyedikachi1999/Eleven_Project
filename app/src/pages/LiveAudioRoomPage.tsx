@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getMediaUrl } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import { scheduleApi } from '@/lib/api'
@@ -682,7 +683,7 @@ export default function LiveAudioRoomPage() {
               }}
             />
             <Avatar className="w-24 h-24 border-4 border-emerald-500/80 shadow-2xl relative z-10">
-              <AvatarImage src={session.host_avatar || ''} />
+              <AvatarImage src={getMediaUrl(session.host_avatar)} />
               <AvatarFallback className="bg-emerald-950 text-emerald-300 font-bold text-2xl">
                 {(session.host_name || 'H').charAt(0).toUpperCase()}
               </AvatarFallback>

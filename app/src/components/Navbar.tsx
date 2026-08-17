@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getMediaUrl } from '@/lib/utils'
 import ElevenLogo from '@/components/ElevenLogo'
 import {
   Home, BookOpen, Church, Tv, Users, Menu, Bell,
@@ -92,7 +93,7 @@ export default function Navbar() {
             <div className="hidden md:flex items-center gap-3">
               <Link to="/dashboard">
                 <Avatar className="w-8 h-8 cursor-pointer ring-2 ring-[#c4956a]/30 hover:ring-[#c4956a]/60 transition-all">
-                  <AvatarImage src={user?.avatar || undefined} />
+                  <AvatarImage src={getMediaUrl(user?.avatar)} />
                   <AvatarFallback className="text-xs font-semibold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
                     {(user?.name ?? 'U').charAt(0).toUpperCase()}
                   </AvatarFallback>
@@ -134,7 +135,7 @@ export default function Navbar() {
                   {isAuthenticated && user ? (
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={user.avatar || undefined} />
+                        <AvatarImage src={getMediaUrl(user.avatar)} />
                         <AvatarFallback style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(user.name ?? 'U').charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div>

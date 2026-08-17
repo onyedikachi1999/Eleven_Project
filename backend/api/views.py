@@ -945,7 +945,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     def me(self, request):
         if not request.user.is_authenticated:
             return Response({'detail': 'Not authenticated'}, status=401)
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={'request': request}).data)
 
     @action(detail=False, methods=['patch', 'put'], url_path='update')
     def update_profile(self, request):
@@ -964,10 +964,13 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         if bio is not None:
             user.bio = bio
         if avatar is not None:
-            user.avatar = avatar
+            avatar_str = str(avatar).strip()
+            if not settings.DEBUG and avatar_str.startswith('http://') and not ('localhost' in avatar_str or '127.0.0.1' in avatar_str):
+                avatar_str = 'https://' + avatar_str[7:]
+            user.avatar = avatar_str or None
 
         user.save()
-        return Response(UserSerializer(user).data)
+        return Response(UserSerializer(user, context={'request': request}).data)
 
     @action(detail=False, methods=['post'], url_path='upgrade')
     def upgrade_subscription(self, request):
@@ -1236,13 +1239,15 @@ def api_user_upload(request):
 
     # Generate full URL
     url = request.build_absolute_uri(settings.MEDIA_URL + path)
+    if not settings.DEBUG and url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
+        url = 'https://' + url[7:]
 
     # Automatically save avatar to user model immediately
     request.user.avatar = url
     request.user.save()
 
     from .serializers import UserSerializer
-    return Response({'url': url, 'user': UserSerializer(request.user).data})
+    return Response({'url': url, 'user': UserSerializer(request.user, context={'request': request}).data})
 
 
 @api_view(['POST'])
