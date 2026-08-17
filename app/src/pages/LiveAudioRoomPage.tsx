@@ -190,7 +190,7 @@ export default function LiveAudioRoomPage() {
 
   // HTTP Live Audio Chunks Refs & State
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const sequenceCounterRef = useRef<number>(Date.now())
+  const sequenceCounterRef = useRef<number>(1)
   const lastSequenceRef = useRef<number>(-1)
   const isDeafenedRef = useRef<boolean>(false)
   const isMutedRef = useRef<boolean>(true)

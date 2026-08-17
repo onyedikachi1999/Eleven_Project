@@ -334,7 +334,7 @@ class LiveRoomReaction(models.Model):
 
 class LiveAudioChunk(models.Model):
     session = models.ForeignKey(ScheduledPrayer, on_delete=models.CASCADE, related_name='audio_chunks')
-    sequence = models.IntegerField()
+    sequence = models.BigIntegerField()
     url = models.URLField()
     created_at = models.DateTimeField(auto_now_add=True)
 
