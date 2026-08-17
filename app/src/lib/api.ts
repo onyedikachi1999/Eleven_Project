@@ -210,6 +210,9 @@ export const scheduleApi = {
     if (token) {
       headers['Authorization'] = `Token ${token}`;
     }
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
     
     const res = await fetch(`${API_BASE}/schedules/${id}/upload_audio/`, {
       method: 'POST',

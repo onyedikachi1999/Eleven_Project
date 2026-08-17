@@ -678,7 +678,7 @@ class ScheduledPrayerViewSet(viewsets.ModelViewSet):
         
         # Verify user is moderator or co-host
         from .models import LiveRoomParticipant
-        is_host = (request.user == session.host)
+        is_host = (request.user == session.host or request.user.is_staff or request.user.is_superuser or getattr(request.user, 'plan', '') == 'premium')
         is_co_moderator = LiveRoomParticipant.objects.filter(session=session, user=request.user, is_co_moderator=True).exists()
         if not is_host and not is_co_moderator:
             return Response({'detail': 'Only moderators or co-hosts can broadcast audio'}, status=403)

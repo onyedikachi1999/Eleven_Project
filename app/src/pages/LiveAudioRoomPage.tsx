@@ -89,7 +89,7 @@ export default function LiveAudioRoomPage() {
   // Compute Moderator role
   const isHostSpeaker = Boolean(
     session?.is_host || 
-    (user && session && user.id === session.host_id) ||
+    (user && session && (user.id === session.host_id || user.is_staff || user.is_superuser || user.plan === 'premium')) ||
     participants.find(p => p.user_id === user?.id)?.isCoModerator
   )
   isModeratorRef.current = isHostSpeaker
@@ -117,8 +117,7 @@ export default function LiveAudioRoomPage() {
   }
 
   const initializeAudioSequence = async (sessionId: string) => {
-    if (sessionId.startsWith('s') || sequenceInitializedRef.current) return
-
+    if (sequenceInitializedRef.current) return
     sequenceInitializedRef.current = true
 
     try {
@@ -126,12 +125,21 @@ export default function LiveAudioRoomPage() {
       if (!Array.isArray(data?.audio_chunks) || data.audio_chunks.length === 0) return
 
       const latestSequence = Math.max(...data.audio_chunks.map((chunk: any) => chunk.sequence))
-
-      // Speakers must continue from the latest uploaded sequence after refresh/re-entry.
       sequenceCounterRef.current = latestSequence + 1
-
-      // Listeners join the live edge instead of replaying stale chunks from earlier in the room.
       lastSequenceRef.current = latestSequence
+
+      // If listener, queue the latest chunk so they hear audio immediately upon joining
+      if (!isModeratorRef.current && !isDeafenedRef.current) {
+        const sorted = [...data.audio_chunks].sort((a, b) => a.sequence - b.sequence)
+        const latestChunk = sorted[sorted.length - 1]
+        if (latestChunk && latestChunk.url) {
+          const secureUrl = getMediaUrl(latestChunk.url) || latestChunk.url
+          audioQueueRef.current.push(secureUrl)
+          if (!isPlayingRef.current) {
+            playNextChunk()
+          }
+        }
+      }
     } catch (err) {
       console.warn('Failed to initialize live audio sequence:', err)
     }
@@ -149,7 +157,7 @@ export default function LiveAudioRoomPage() {
         setSession(data)
         setTimeLeft(getSessionTimeLeft(data))
         // If owner/host, enable speaking
-        if (user?.id === data.host_id) {
+        if (user?.id === data.host_id || user?.plan === 'premium' || user?.is_staff) {
           setIsMuted(false)
         }
       })
@@ -168,7 +176,7 @@ export default function LiveAudioRoomPage() {
     scheduleApi.joinRoom(id).catch(() => {})
   }, [loading, session, id])
 
-  // 1. Audio Recording Loop for Host/Moderator (Generates Standalone Self-Contained Audio Chunks)
+  // 1. Audio Recording Loop for Host/Moderator (Zero-Gap Continuous Standalone Chunks)
   useEffect(() => {
     if (loading || !session || !id) return
 
@@ -176,7 +184,13 @@ export default function LiveAudioRoomPage() {
     let recordingTimer: any = null
 
     if (isHostSpeaker && !isMuted) {
-      navigator.mediaDevices.getUserMedia({ audio: true })
+      navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      })
         .then(stream => {
           if (!isRecordingActive) {
             stream.getTracks().forEach(t => t.stop())
@@ -210,35 +224,34 @@ export default function LiveAudioRoomPage() {
                 }
               }
 
-              recorder.onstop = async () => {
-                if (chunks.length > 0 && isRecordingActive) {
-                  const blobType = mimeType || recorder.mimeType || 'audio/webm'
-                  const completeBlob = new Blob(chunks, { type: blobType })
-                  if (completeBlob.size > 400) {
-                    const currentSeq = sequenceCounterRef.current++
-                    console.log(`[Live Audio] Uploading chunk #${currentSeq} (${completeBlob.size} bytes)`)
-                    try {
-                      await scheduleApi.uploadAudio(id, currentSeq, completeBlob)
-                    } catch (err) {
-                      console.error('[Live Audio] Chunk upload failed:', err)
-                    }
-                  }
-                }
-                // Continue loop immediately if still actively broadcasting
+              recorder.onstop = () => {
+                // Immediately start the next segment so no microphone speech is lost!
                 if (isRecordingActive && isHostSpeaker && !isMutedRef.current) {
                   recordChunk()
+                }
+
+                // Asynchronously upload the completed standalone chunk in background
+                if (chunks.length > 0) {
+                  const blobType = mimeType || recorder.mimeType || 'audio/webm'
+                  const completeBlob = new Blob(chunks, { type: blobType })
+                  if (completeBlob.size > 300) {
+                    const currentSeq = sequenceCounterRef.current++
+                    scheduleApi.uploadAudio(id, currentSeq, completeBlob).catch(err => {
+                      console.warn('[Live Audio] Audio chunk upload error:', err)
+                    })
+                  }
                 }
               }
 
               recorder.start()
-              // Record 2.5 seconds per standalone chunk
+              // 2-second standalone chunks for responsive low-latency streaming
               recordingTimer = setTimeout(() => {
                 if (recorder.state === 'recording') {
                   recorder.stop()
                 }
-              }, 2500)
+              }, 2000)
             } catch (err) {
-              console.error('[Live Audio] MediaRecorder loop error:', err)
+              console.error('[Live Audio] MediaRecorder error:', err)
             }
           }
 
@@ -307,8 +320,7 @@ export default function LiveAudioRoomPage() {
   useEffect(() => {
     if (loading || !session || !id) return
 
-    // Sync loop & countdown timer. Always derive remaining time from the session
-    // timestamps so refresh/re-entry cannot restart the room clock.
+    // Countdown timer
     const timer = setInterval(() => {
       const remaining = getSessionTimeLeft(session)
       setTimeLeft(remaining)
@@ -321,7 +333,7 @@ export default function LiveAudioRoomPage() {
       }
     }, 1000)
 
-    // 2-second Sync loop
+    // 1.2-second Sync loop
     const syncInterval = setInterval(() => {
       // 1. Send Heartbeat to keep active list correct
       scheduleApi.sendHeartbeat(id)
