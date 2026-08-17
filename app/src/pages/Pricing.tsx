@@ -36,20 +36,20 @@ const plans: Plan[] = [
     name: 'Free',
     price: '₦0',
     period: 'forever',
-    description: 'Share testimonies, pray for others, and explore community content.',
+    description: 'Share testimonies, pray for others, and join live rooms.',
     icon: Shield,
     color: '#6B6560',
     borderColor: 'var(--eleven-border)',
     accentColor: '#E8E4DE',
     features: [
       { name: 'Access to Testimony Hub (full access)', included: true },
-      { name: 'Share your testimonies (Text, Audio, Video & Image)', included: true },
+      { name: 'Share testimonies (Text, Audio, Video & Image)', included: true },
       { name: 'React & stand in prayer on testimonies', included: true },
-      { name: 'Join public prayer circles', included: true },
+      { name: 'Join public prayer circles & listen in live sessions', included: true },
       { name: 'Access to Community Forum (read-only)', included: true },
-      { name: 'Create prayer circles & post on circle walls', included: false },
-      { name: 'Host live joint prayer sessions', included: false },
-      { name: 'Premium Ambassador badge', included: false },
+      { name: 'Create & lead prayer circles', included: false },
+      { name: 'Schedule & host live joint prayer sessions', included: false },
+      { name: 'Verified Ambassador badge', included: false },
     ]
   },
   {
@@ -57,7 +57,7 @@ const plans: Plan[] = [
     name: 'Regular',
     price: '₦5,000',
     period: 'month',
-    description: 'Engage actively in discussions and create prayer circles.',
+    description: 'Create & lead prayer circles and engage in discussions.',
     icon: Star,
     color: '#8B6914',
     borderColor: '#E8D5C0',
@@ -66,11 +66,11 @@ const plans: Plan[] = [
     features: [
       { name: 'Full access to Testimony Hub & Community Forum', included: true },
       { name: 'Share unlimited testimonies & comments', included: true },
-      { name: 'Create & lead prayer circles', included: true },
-      { name: 'Post messages & updates on circle walls', included: true },
+      { name: 'Create & lead custom prayer circles', included: true },
+      { name: 'Post messages & media on circle walls', included: true },
       { name: 'Create discussions & reply in forum topics', included: true },
-      { name: 'Host live joint prayer sessions', included: false },
-      { name: 'Premium Ambassador badge', included: false },
+      { name: 'Schedule & host live joint prayer sessions', included: false },
+      { name: 'Verified Ambassador badge', included: false },
     ]
   },
   {
@@ -78,7 +78,7 @@ const plans: Plan[] = [
     name: 'Premium',
     price: '₦15,000',
     period: 'month',
-    description: 'Host live prayer sessions and access full platform features.',
+    description: 'Schedule & host live prayer sessions and lead prayer circles.',
     icon: Crown,
     color: '#6B3A5A',
     borderColor: '#E8D5E0',
@@ -87,11 +87,11 @@ const plans: Plan[] = [
     features: [
       { name: 'Full access to Testimony Hub & Community Forum', included: true },
       { name: 'Share unlimited testimonies & comments', included: true },
-      { name: 'Create & lead prayer circles', included: true },
-      { name: 'Post messages & updates on circle walls', included: true },
-      { name: 'Create discussions & reply in forum topics', included: true },
-      { name: 'Host & broadcast live joint prayer sessions', included: true },
-      { name: 'Premium Ambassador badge & priority support', included: true },
+      { name: 'Create & lead custom prayer circles', included: true },
+      { name: 'Post messages & media on circle walls', included: true },
+      { name: 'Schedule & host live joint prayer sessions', included: true },
+      { name: 'Live audio broadcasting & co-host controls', included: true },
+      { name: 'Verified Ambassador badge & priority prayer support', included: true },
     ]
   }
 ]
