@@ -1305,7 +1305,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AdminViewSet(viewsets.ViewSet):
     def list_stats(self, request):
-        if not (request.user.is_authenticated and request.user.role == 'admin'):
+        if not (request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser)):
             return Response({'detail': 'Forbidden'}, status=403)
         pending_testimonies = Testimony.objects.filter(status='pending').count()
         total_users = User.objects.count()
@@ -1319,11 +1319,46 @@ class AdminViewSet(viewsets.ViewSet):
         })
 
     def list_users(self, request):
-        if not (request.user.is_authenticated and request.user.role == 'admin'):
+        if not (request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser)):
             return Response({'detail': 'Forbidden'}, status=403)
         users = User.objects.all().order_by('-created_at')
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
+
+    def update_user_plan(self, request, user_id=None):
+        if not (request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser)):
+            return Response({'detail': 'Forbidden'}, status=403)
+        plan = request.data.get('plan')
+        if plan not in ['free', 'regular', 'premium']:
+            return Response({'detail': 'Invalid plan. Must be free, regular, or premium'}, status=400)
+        try:
+            target_user = User.objects.get(id=user_id)
+            target_user.subscription_plan = plan
+            target_user.save()
+            return Response({'success': True, 'user': UserSerializer(target_user).data})
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=404)
+
+    def create_user(self, request):
+        if not (request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser)):
+            return Response({'detail': 'Forbidden'}, status=403)
+        username = request.data.get('username', '').strip()
+        email = request.data.get('email', '').strip() or f"{username.lower()}@elevenfaith.com"
+        password = request.data.get('password', '').strip()
+        plan = request.data.get('plan', 'premium')
+        role = request.data.get('role', 'user')
+
+        if not username or not password:
+            return Response({'detail': 'Username and password are required'}, status=400)
+        
+        user, created = User.objects.get_or_create(username=username, defaults={'email': email})
+        user.set_password(password)
+        user.subscription_plan = plan
+        user.role = role
+        if email:
+            user.email = email
+        user.save()
+        return Response({'success': True, 'created': created, 'user': UserSerializer(user).data})
 
 
 from rest_framework.permissions import BasePermission

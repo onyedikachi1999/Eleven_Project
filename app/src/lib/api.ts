@@ -251,6 +251,10 @@ export const commentApi = {
 export const adminApi = {
   stats: () => fetchApi('/admin/stats/'),
   users: () => fetchApi('/admin/users/'),
+  updateUserPlan: (userId: number, plan: 'free' | 'regular' | 'premium') =>
+    fetchApi(`/admin/users/${userId}/plan/`, { method: 'POST', body: JSON.stringify({ plan }) }),
+  createUser: (data: { username: string; password: string; email?: string; plan?: string; role?: string }) =>
+    fetchApi('/admin/users/create/', { method: 'POST', body: JSON.stringify(data) }),
   upload: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

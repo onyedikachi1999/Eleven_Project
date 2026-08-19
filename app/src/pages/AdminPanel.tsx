@@ -104,6 +104,16 @@ export default function AdminPanel() {
     }
   }
 
+  const handlePlanChange = async (userId: number, newPlan: 'free' | 'regular' | 'premium') => {
+    try {
+      await adminApi.updateUserPlan(userId, newPlan)
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, subscription_plan: newPlan } : u))
+      toast.success(`User subscription updated to ${newPlan}!`)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update plan')
+    }
+  }
+
   const handleDeleteSlide = async (id: number) => {
     try {
       await slideApi.delete(id)
@@ -336,20 +346,78 @@ export default function AdminPanel() {
         )}
         
         {activeTab === 'users' && (
-          allUsers.length > 0 ? <div className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b" style={{ borderColor: 'var(--eleven-border)' }}>{['User', 'Role', 'Plan', 'Joined', 'Last Active'].map(h => <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--eleven-text-muted)' }}>{h}</th>)}</tr></thead>
-                <tbody>{allUsers.map(u => <tr key={u.id} className="border-b hover:bg-gray-50/50 transition-colors" style={{ borderColor: 'var(--eleven-border)' }}>
-                  <td className="px-4 py-3"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>{(u.name ?? 'U').charAt(0).toUpperCase()}</div><div><p className="font-medium" style={{ color: 'var(--eleven-text)' }}>{u.name ?? 'Anonymous'}</p><p className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>{u.email ?? ''}</p></div></div></td>
-                  <td className="px-4 py-3"><span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{u.role}</span></td>
-                  <td className="px-4 py-3"><span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border capitalize text-stone-600 bg-stone-50">{u.subscription_plan || 'free'}</span></td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>{timeAgo(u.created_at)}</td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>{timeAgo(u.last_sign_in_at)}</td>
-                </tr>)}</tbody>
-              </table>
+          allUsers.length > 0 ? (
+            <div className="bg-white rounded-xl overflow-hidden border" style={{ borderColor: 'var(--eleven-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-stone-50/50" style={{ borderColor: 'var(--eleven-border)' }}>
+                      {['User', 'Role', 'Plan / Status', 'Change Plan', 'Joined', 'Last Active'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--eleven-text-muted)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allUsers.map(u => {
+                      const planBadgeClass = u.subscription_plan === 'premium'
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+                        : u.subscription_plan === 'regular'
+                        ? 'bg-blue-50 text-blue-800 border-blue-200 font-semibold'
+                        : 'bg-stone-100 text-stone-600 border-stone-200'
+
+                      return (
+                        <tr key={u.id} className="border-b hover:bg-stone-50/60 transition-colors" style={{ borderColor: 'var(--eleven-border)' }}>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: 'var(--eleven-accent-light)', color: 'var(--eleven-accent-dark)' }}>
+                                {(u.name ?? u.username ?? 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium text-xs text-stone-900">{u.name || u.username || 'Anonymous'}</p>
+                                <p className="text-[11px] text-stone-400">@{u.username || u.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-100 text-gray-600'}`}>
+                              {u.role}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border capitalize ${planBadgeClass}`}>
+                              {u.subscription_plan || 'free'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Select
+                              value={u.subscription_plan || 'free'}
+                              onValueChange={(val: 'free' | 'regular' | 'premium') => handlePlanChange(u.id, val)}
+                            >
+                              <SelectTrigger className="h-7 text-xs w-28 bg-white border-stone-200">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="free" className="text-xs">Free</SelectItem>
+                                <SelectItem value="regular" className="text-xs">Regular</SelectItem>
+                                <SelectItem value="premium" className="text-xs font-bold text-amber-700">Premium ⭐</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-4 py-3 text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>{timeAgo(u.created_at)}</td>
+                          <td className="px-4 py-3 text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>{timeAgo(u.last_sign_in_at)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div> : <div className="text-center py-16"><Users size={32} className="mx-auto mb-3" style={{ color: 'var(--eleven-text-muted)' }} /><p className="text-lg font-medium" style={{ color: 'var(--eleven-text)' }}>No users found</p></div>
+          ) : (
+            <div className="text-center py-16">
+              <Users size={32} className="mx-auto mb-3" style={{ color: 'var(--eleven-text-muted)' }} />
+              <p className="text-lg font-medium" style={{ color: 'var(--eleven-text)' }}>No users found</p>
+            </div>
+          )
         )}
 
         {activeTab === 'slides' && (
