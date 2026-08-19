@@ -136,16 +136,16 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
 
   const mediaUrl = getMediaUrl(t.media_url)
   const thumbUrl = getMediaUrl(t.thumbnail_url)
-  const isVideo = t.type === 'video' || (mediaUrl && ['.mp4', '.mov', '.webm', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
-  const isAudio = t.type === 'audio' || (mediaUrl && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
-  const displayImage = thumbUrl || (t.type === 'image' ? mediaUrl : null) || (mediaUrl && !isVideo && !isAudio ? mediaUrl : null)
+  const isVideo = t.type === 'video' || Boolean(mediaUrl && ['.mp4', '.mov', '.webm', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const isAudio = t.type === 'audio' || Boolean(mediaUrl && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const displayImage = thumbUrl || (t.type === 'image' && mediaUrl ? mediaUrl : null) || (mediaUrl && !isVideo && !isAudio ? mediaUrl : null)
 
   return (
     <div onClick={onSelect} className="group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderLeft: `3px solid ${catColor.bg}` }}>
       {displayImage ? (
-        <div className="relative aspect-video overflow-hidden bg-stone-100">
-          <img src={displayImage} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          {isVideo && <div className="absolute inset-0 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-md"><Play size={20} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>}
+        <div className="relative aspect-video overflow-hidden bg-stone-100 flex items-center justify-center">
+          <img src={displayImage} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-md"><Play size={20} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>}
         </div>
       ) : isVideo ? (
         <div className="relative aspect-video overflow-hidden bg-stone-900 flex items-center justify-center">
@@ -373,9 +373,9 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
   const catColor = categoryColors[t.category] ?? categoryColors.general
   const mediaUrl = getMediaUrl(t.media_url)
   const thumbUrl = getMediaUrl(t.thumbnail_url)
-  const isVideo = t.type === 'video' || (mediaUrl && ['.mp4', '.mov', '.webm', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
-  const isAudio = t.type === 'audio' || (mediaUrl && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
-  const displayImage = thumbUrl || (t.type === 'image' ? mediaUrl : null) || (mediaUrl && !isVideo && !isAudio ? mediaUrl : null)
+  const isVideo = t.type === 'video' || Boolean(mediaUrl && ['.mp4', '.mov', '.webm', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const isAudio = t.type === 'audio' || Boolean(mediaUrl && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const displayImage = thumbUrl || (t.type === 'image' && mediaUrl ? mediaUrl : null) || (mediaUrl && !isVideo && !isAudio ? mediaUrl : null)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -420,8 +420,8 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
               <audio src={mediaUrl} controls className="w-full mt-2" />
             </div>
           ) : displayImage ? (
-            <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-stone-100 flex items-center justify-center">
-              <img src={displayImage} alt={t.title} className="w-full h-full object-contain" />
+            <div className="rounded-xl overflow-hidden mb-4 bg-stone-50 border border-stone-200 flex items-center justify-center p-1 max-h-96">
+              <img src={displayImage} alt={t.title} className="max-h-96 w-auto object-contain rounded-lg shadow-sm" />
             </div>
           ) : null}
           <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
