@@ -1448,4 +1448,6 @@ def api_testimony_media_upload(request):
 
     # Generate full URL
     url = request.build_absolute_uri(settings.MEDIA_URL + path)
+    if not settings.DEBUG and url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
+        url = 'https://' + url[7:]
     return Response({'url': url})

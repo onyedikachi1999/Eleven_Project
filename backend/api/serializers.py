@@ -50,6 +50,8 @@ class TestimonyListSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
     author_avatar = serializers.SerializerMethodField()
     has_reacted = serializers.SerializerMethodField()
+    media_url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Testimony
@@ -72,6 +74,32 @@ class TestimonyListSerializer(serializers.ModelSerializer):
         if request and request.user and request.user.is_authenticated:
             return TestimonyReaction.objects.filter(testimony=obj, user=request.user).exists()
         return False
+
+    def get_media_url(self, obj):
+        if not obj.media_url:
+            return None
+        url = str(obj.media_url).strip()
+        if not url:
+            return None
+        request = self.context.get('request')
+        if url.startswith('/') and request:
+            url = request.build_absolute_uri(url)
+        if not settings.DEBUG and url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
+            url = 'https://' + url[7:]
+        return url
+
+    def get_thumbnail_url(self, obj):
+        if not obj.thumbnail_url:
+            return None
+        url = str(obj.thumbnail_url).strip()
+        if not url:
+            return None
+        request = self.context.get('request')
+        if url.startswith('/') and request:
+            url = request.build_absolute_uri(url)
+        if not settings.DEBUG and url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
+            url = 'https://' + url[7:]
+        return url
 
 
 class TestimonyCreateSerializer(serializers.ModelSerializer):

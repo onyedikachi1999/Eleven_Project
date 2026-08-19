@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { testimonyApi, commentApi } from '@/lib/api'
+import { getMediaUrl } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { Heart, MessageCircle, Bookmark, Share2, Play, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles } from 'lucide-react'
+import { Heart, MessageCircle, Bookmark, Share2, Play, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles, Volume2, ImageIcon } from 'lucide-react'
 
 export const categoryIcons: Record<string, typeof Heart> = {
   healing: HandHeart, finance: Briefcase, family: UserPlus,
@@ -129,14 +130,24 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
     }
   }
 
+  const mediaUrl = getMediaUrl(t.media_url)
+  const thumbUrl = getMediaUrl(t.thumbnail_url)
+  const isVideo = t.type === 'video' || (mediaUrl && ['.mp4', '.mov', '.webm', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const isAudio = t.type === 'audio' || (mediaUrl && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const displayImage = thumbUrl || (t.type === 'image' ? mediaUrl : null) || (mediaUrl && !isVideo && !isAudio ? mediaUrl : null)
+
   return (
     <div onClick={onSelect} className="group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderLeft: `3px solid ${catColor.bg}` }}>
-      {t.thumbnail_url && (
-        <div className="relative aspect-video overflow-hidden">
-          <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          {t.type === 'video' && <div className="absolute inset-0 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-md"><Play size={20} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>}
+      {displayImage ? (
+        <div className="relative aspect-video overflow-hidden bg-stone-100">
+          <img src={displayImage} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          {isVideo && <div className="absolute inset-0 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-md"><Play size={20} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>}
         </div>
-      )}
+      ) : isVideo ? (
+        <div className="relative aspect-video overflow-hidden bg-stone-900 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-md"><Play size={20} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div>
+        </div>
+      ) : null}
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2.5">
           <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: t.is_anonymous ? '#E8E4DE' : catColor.bg, color: t.is_anonymous ? '#6B6560' : catColor.text }}>{t.is_anonymous ? 'A' : (t.author_name ?? 'U').charAt(0).toUpperCase()}</div>
@@ -168,7 +179,7 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
             >
               <Share2
                 size={14}
-                style={{ color: "var(--eleven-text-muted)" }}
+                className="text-stone-400 hover:text-foreground"
               />
             </button>
           </span>
@@ -305,6 +316,11 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
 
   const CatIcon = categoryIcons[t.category] ?? Heart
   const catColor = categoryColors[t.category] ?? categoryColors.general
+  const mediaUrl = getMediaUrl(t.media_url)
+  const thumbUrl = getMediaUrl(t.thumbnail_url)
+  const isVideo = t.type === 'video' || (mediaUrl && ['.mp4', '.mov', '.webm', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const isAudio = t.type === 'audio' || (mediaUrl && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+  const displayImage = thumbUrl || (t.type === 'image' ? mediaUrl : null) || (mediaUrl && !isVideo && !isAudio ? mediaUrl : null)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -325,28 +341,32 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
         </DialogHeader>
 
         <div className="my-6">
-          {t.type === 'video' && t.media_url ? (
+          {isVideo && mediaUrl ? (
             <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-black">
               <video
-                src={t.media_url}
-                poster={t.thumbnail_url || undefined}
+                src={mediaUrl}
+                poster={thumbUrl || undefined}
                 controls
                 playsInline
                 className="w-full h-full object-contain"
               />
             </div>
-          ) : t.type === 'audio' && t.media_url ? (
-            <div className="mb-4">
-              {t.thumbnail_url && (
+          ) : isAudio && mediaUrl ? (
+            <div className="mb-4 p-4 rounded-xl bg-amber-50/50 border border-amber-200">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-900 mb-2">
+                <Volume2 size={16} className="text-amber-600" />
+                <span>Voice Testimony Recording</span>
+              </div>
+              {thumbUrl && (
                 <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
-                  <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover" />
+                  <img src={thumbUrl} alt={t.title} className="w-full h-full object-cover" />
                 </div>
               )}
-              <audio src={t.media_url} controls className="w-full mt-2" />
+              <audio src={mediaUrl} controls className="w-full mt-2" />
             </div>
-          ) : t.thumbnail_url ? (
-            <div className="relative aspect-video rounded-xl overflow-hidden mb-4">
-              <img src={t.thumbnail_url} alt={t.title} className="w-full h-full object-cover" />
+          ) : displayImage ? (
+            <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-stone-100 flex items-center justify-center">
+              <img src={displayImage} alt={t.title} className="w-full h-full object-contain" />
             </div>
           ) : null}
           <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
