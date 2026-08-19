@@ -208,17 +208,31 @@ class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         target_type = self.request.query_params.get('target_type')
         target_id = self.request.query_params.get('target_id')
+        include_replies = self.request.query_params.get('include_replies')
         qs = Comment.objects.all()
         if target_type:
             qs = qs.filter(target_type=target_type)
         if target_id:
             qs = qs.filter(target_id=target_id)
-        return qs.order_by('-created_at')
+        if not include_replies:
+            qs = qs.filter(parent__isnull=True)
+        return qs.order_by('created_at')
 
     def create(self, request):
-        serializer = CommentSerializer(data=request.data)
+        parent_id = request.data.get('parent')
+        parent = None
+        if parent_id:
+            try:
+                parent = Comment.objects.get(id=parent_id)
+            except Comment.DoesNotExist:
+                return Response({'detail': 'Parent comment not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = CommentSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        comment = serializer.save(user=request.user if request.user.is_authenticated else None)
+        comment = serializer.save(
+            user=request.user if request.user.is_authenticated else None,
+            parent=parent
+        )
         if comment.target_type == 'testimony':
             try:
                 from .models import Testimony
@@ -227,7 +241,7 @@ class CommentViewSet(viewsets.ModelViewSet):
                 testimony.save()
             except Exception:
                 pass
-        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
+        return Response(CommentSerializer(comment, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
 class PrayerCircleViewSet(viewsets.ModelViewSet):

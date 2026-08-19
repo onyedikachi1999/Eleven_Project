@@ -132,6 +132,7 @@ class Comment(models.Model):
     ]
     target_type = models.CharField(max_length=10, choices=TARGET_CHOICES)
     target_id = models.PositiveIntegerField()
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     content = models.TextField()
     is_anonymous = models.BooleanField(default=False)
@@ -139,7 +140,7 @@ class Comment(models.Model):
 
     class Meta:
         db_table = 'comments'
-        ordering = ['-created_at']
+        ordering = ['created_at']
 
 
 class TestimonyReaction(models.Model):

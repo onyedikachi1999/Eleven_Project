@@ -9,7 +9,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { Heart, MessageCircle, Bookmark, Share2, Play, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles, Volume2, ImageIcon } from 'lucide-react'
+import {
+  Heart, MessageCircle, Bookmark, Share2, Play, HandHeart, Flame,
+  Briefcase, UserPlus, Church, Sparkles, Volume2, ImageIcon,
+  CornerDownRight, Reply, X
+} from 'lucide-react'
 
 export const categoryIcons: Record<string, typeof Heart> = {
   healing: HandHeart, finance: Briefcase, family: UserPlus,
@@ -207,6 +211,12 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
   const [hasReacted, setHasReacted] = useState(t.has_reacted)
   const [isSaved, setIsSaved] = useState(false)
 
+  // Reply states
+  const [replyingToId, setReplyingToId] = useState<number | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [replyAnonymous, setReplyAnonymous] = useState(false)
+  const [replySubmitting, setReplySubmitting] = useState(false)
+
   const loadComments = () => {
     commentApi.list('testimony', t.id).then(r => {
       setComments(r.results ?? r)
@@ -253,7 +263,6 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
       }
       onUpdate(t.id)
     } catch (err) {
-      // Revert state on error
       setHasReacted(hasReacted)
       setAmenCount(amenCount)
       toast.error('Failed to update reaction')
@@ -308,10 +317,56 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
     if (!commentText.trim()) return
     setSubmitting(true)
     try {
-      await commentApi.create({ target_type: 'testimony', target_id: t.id, content: commentText.trim(), is_anonymous: isAnonymous })
-      setCommentText(''); setIsAnonymous(false); toast.success('Comment posted!'); loadComments(); onUpdate()
-    } catch (err: any) { toast.error(err.message || 'Failed to post comment') }
+      await commentApi.create({
+        target_type: 'testimony',
+        target_id: t.id,
+        content: commentText.trim(),
+        is_anonymous: isAnonymous
+      })
+      setCommentText('')
+      setIsAnonymous(false)
+      toast.success('Comment posted!')
+      loadComments()
+      onUpdate()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to post comment')
+    }
     setSubmitting(false)
+  }
+
+  const handlePostReply = async (parentId: number) => {
+    if (!isAuthenticated) { toast.error('Please sign in first'); return }
+    if (!replyText.trim()) return
+    setReplySubmitting(true)
+    try {
+      await commentApi.create({
+        target_type: 'testimony',
+        target_id: t.id,
+        parent: parentId,
+        content: replyText.trim(),
+        is_anonymous: replyAnonymous
+      })
+      setReplyText('')
+      setReplyAnonymous(false)
+      setReplyingToId(null)
+      toast.success('Reply posted!')
+      loadComments()
+      onUpdate()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to post reply')
+    }
+    setReplySubmitting(false)
+  }
+
+  const countTotalComments = (items: any[]): number => {
+    let count = 0
+    for (const item of items) {
+      count += 1
+      if (Array.isArray(item.replies)) {
+        count += item.replies.length
+      }
+    }
+    return count
   }
 
   const CatIcon = categoryIcons[t.category] ?? Heart
@@ -374,7 +429,7 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
 
         <div className="flex items-center gap-4 py-3 border-t border-b" style={{ borderColor: 'var(--eleven-border)' }}>
           <button onClick={handleAmen} className={`flex items-center gap-1.5 text-xs font-medium transition-all duration-300 ${hasReacted ? 'text-red-500 scale-105 font-semibold' : 'text-stone-400 hover:text-red-500'}`}><Heart size={14} fill={hasReacted ? 'currentColor' : 'none'} className={`transition-transform duration-300 ${hasReacted ? 'scale-110 text-red-500' : ''}`} /> {amenCount} {hasReacted ? 'Reacted' : 'Reaction'}</button>
-          <button onClick={() => document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {comments.length} Comments</button>
+          <button onClick={() => document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-foreground" style={{ color: 'var(--eleven-text-muted)' }}><MessageCircle size={14} /> {countTotalComments(comments)} Comments</button>
           <span className="flex items-center gap-1.5 text-xs mr-auto" style={{ color: 'var(--eleven-text-muted)' }}>Viewed {viewCount} times</span>
           
           <div className="flex items-center gap-3">
@@ -396,40 +451,180 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
             >
               <Share2
                 size={14}
-                style={{ color: "var(--eleven-text-muted)" }}
+                className="text-stone-400 hover:text-foreground"
               />
             </button>
           </div>
         </div>
 
         <div className="mt-6 space-y-4">
-          <h3 id="comments-section" className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>Comments</h3>
+          <div className="flex items-center justify-between">
+            <h3 id="comments-section" className="font-display font-semibold text-base" style={{ color: 'var(--eleven-text)' }}>
+              Comments ({countTotalComments(comments)})
+            </h3>
+          </div>
+
           {isAuthenticated ? (
-            <form onSubmit={handlePostComment} className="space-y-3">
-              <Textarea value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Write an encouraging word..." required rows={2} className="text-xs resize-none" />
+            <form onSubmit={handlePostComment} className="space-y-3 bg-stone-50/70 p-3.5 rounded-xl border border-stone-200">
+              <Textarea
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                placeholder="Write an encouraging word or prayer..."
+                required
+                rows={2}
+                className="text-xs resize-none bg-white"
+              />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Checkbox id="anon-comment" checked={isAnonymous} onCheckedChange={v => setIsAnonymous(v as boolean)} />
-                  <Label htmlFor="anon-comment" className="text-xs font-normal cursor-pointer">Comment anonymously</Label>
+                  <Label htmlFor="anon-comment" className="text-xs font-normal cursor-pointer text-stone-600">Comment anonymously</Label>
                 </div>
-                <Button type="submit" size="sm" className="rounded-lg text-xs" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>{submitting ? 'Posting...' : 'Post Comment'}</Button>
+                <Button type="submit" size="sm" className="rounded-lg text-xs" style={{ background: 'var(--eleven-accent)' }} disabled={submitting}>
+                  {submitting ? 'Posting...' : 'Post Comment'}
+                </Button>
               </div>
             </form>
           ) : (
-            <div className="p-3 bg-stone-50/50 rounded-lg text-center"><p className="text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>Please <Link to="/login" className="font-semibold underline" style={{ color: 'var(--eleven-accent)' }}>Sign In</Link> to post an encouraging comment.</p></div>
+            <div className="p-3 bg-stone-50/50 rounded-lg text-center">
+              <p className="text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>
+                Please <Link to="/login" className="font-semibold underline" style={{ color: 'var(--eleven-accent)' }}>Sign In</Link> to post an encouraging comment.
+              </p>
+            </div>
           )}
+
+          {/* Comments and Nested Replies List */}
           <div className="space-y-3 pt-2">
             {comments.length > 0 ? (
-              comments.map(c => (
-                <div key={c.id} className="p-3 rounded-lg bg-stone-50/50 border" style={{ borderColor: 'var(--eleven-border)' }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold" style={{ color: 'var(--eleven-text)' }}>{c.is_anonymous ? 'Anonymous' : (c.author_name ?? 'User')}</span>
-                    <span className="text-[10px]" style={{ color: 'var(--eleven-text-muted)' }}>&middot; {timeAgo(c.created_at)}</span>
+              comments.map(c => {
+                const authorInit = (c.author_name ?? 'U').charAt(0).toUpperCase()
+                const isReplying = replyingToId === c.id
+
+                return (
+                  <div key={c.id} className="p-3.5 rounded-xl bg-white border border-stone-200/90 shadow-sm transition-all hover:border-stone-300">
+                    {/* Top level comment */}
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 bg-stone-100 text-stone-700">
+                        {c.is_anonymous ? 'A' : authorInit}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-stone-900">
+                              {c.is_anonymous ? 'Anonymous' : (c.author_name ?? 'User')}
+                            </span>
+                            <span className="text-[10px] text-stone-400">
+                              &middot; {timeAgo(c.created_at)}
+                            </span>
+                          </div>
+                          {isAuthenticated && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingToId(isReplying ? null : c.id)
+                                setReplyText('')
+                              }}
+                              className="text-[11px] font-medium text-amber-700 hover:text-amber-800 flex items-center gap-1 hover:underline cursor-pointer"
+                            >
+                              <Reply size={12} />
+                              <span>{isReplying ? 'Cancel' : 'Reply'}</span>
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+
+                        {/* Inline Reply Form */}
+                        {isReplying && (
+                          <div className="mt-3 p-3 bg-stone-50 rounded-xl border border-amber-200/70 space-y-2">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
+                              <span className="flex items-center gap-1 text-amber-800">
+                                <CornerDownRight size={12} />
+                                Replying to {c.is_anonymous ? 'Anonymous' : (c.author_name ?? 'User')}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setReplyingToId(null)}
+                                className="text-stone-400 hover:text-stone-600"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                            <Textarea
+                              value={replyText}
+                              onChange={e => setReplyText(e.target.value)}
+                              placeholder={`Reply to ${c.is_anonymous ? 'Anonymous' : (c.author_name ?? 'User')}...`}
+                              rows={2}
+                              className="text-xs resize-none bg-white"
+                              autoFocus
+                            />
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center gap-1.5">
+                                <Checkbox
+                                  id={`anon-reply-${c.id}`}
+                                  checked={replyAnonymous}
+                                  onCheckedChange={v => setReplyAnonymous(v as boolean)}
+                                />
+                                <Label htmlFor={`anon-reply-${c.id}`} className="text-[11px] text-stone-600 font-normal cursor-pointer">
+                                  Reply anonymously
+                                </Label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs px-2.5"
+                                  onClick={() => setReplyingToId(null)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-7 text-xs px-3 font-semibold text-white bg-amber-700 hover:bg-amber-800 rounded-lg"
+                                  disabled={replySubmitting || !replyText.trim()}
+                                  onClick={() => handlePostReply(c.id)}
+                                >
+                                  {replySubmitting ? 'Replying...' : 'Post Reply'}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Nested Replies List */}
+                        {Array.isArray(c.replies) && c.replies.length > 0 && (
+                          <div className="mt-3 pl-3 border-l-2 border-amber-200/80 space-y-2.5">
+                            {c.replies.map((reply: any) => {
+                              const rInit = (reply.author_name ?? 'U').charAt(0).toUpperCase()
+                              return (
+                                <div key={reply.id} className="p-2.5 rounded-lg bg-stone-50 border border-stone-200/60">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold bg-amber-100 text-amber-800">
+                                      {reply.is_anonymous ? 'A' : rInit}
+                                    </div>
+                                    <span className="text-xs font-semibold text-stone-900">
+                                      {reply.is_anonymous ? 'Anonymous' : (reply.author_name ?? 'User')}
+                                    </span>
+                                    <span className="text-[10px] text-stone-400">
+                                      &middot; {timeAgo(reply.created_at)}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-stone-700 pl-7 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs" style={{ color: 'var(--eleven-text-secondary)' }}>{c.content}</p>
-                </div>
-              ))
-            ) : <p className="text-xs text-center py-4" style={{ color: 'var(--eleven-text-muted)' }}>No comments yet. Leave a word of encouragement!</p>}
+                )
+              })
+            ) : (
+              <p className="text-xs text-center py-6 text-stone-400">
+                No comments yet. Leave a word of encouragement!
+              </p>
+            )}
           </div>
         </div>
       </DialogContent>

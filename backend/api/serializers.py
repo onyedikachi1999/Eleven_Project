@@ -136,15 +136,28 @@ class PrayerCreateSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
+    author_avatar = serializers.SerializerMethodField()
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'target_type', 'target_id', 'content', 'is_anonymous', 'created_at', 'user_id', 'author_name']
+        fields = ['id', 'target_type', 'target_id', 'parent', 'content', 'is_anonymous', 'created_at', 'user_id', 'author_name', 'author_avatar', 'replies']
 
     def get_author_name(self, obj):
         if obj.is_anonymous or obj.user is None:
             return None
         return obj.user.get_full_name() or obj.user.username or 'User'
+
+    def get_author_avatar(self, obj):
+        if obj.is_anonymous or obj.user is None:
+            return None
+        return obj.user.avatar
+
+    def get_replies(self, obj):
+        if obj.parent is None:
+            replies = obj.replies.all().order_by('created_at')
+            return CommentSerializer(replies, many=True, context=self.context).data
+        return []
 
 
 class PrayerCircleSerializer(serializers.ModelSerializer):
