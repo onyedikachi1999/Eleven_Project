@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { adminApi, testimonyApi, slideApi } from '@/lib/api'
+import { getMediaUrl } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
   Shield, Users, BookOpen, HandHeart, CheckCircle, XCircle, Clock,
-  Flame, Briefcase, UserPlus, Church, Sparkles, Plus, Trash2, Film, Image as ImageIcon
+  Flame, Briefcase, UserPlus, Church, Sparkles, Plus, Trash2, Film,
+  Image as ImageIcon, Video, Volume2, Music, Eye, Play, Heart, MessageCircle
 } from 'lucide-react'
 
 const categoryIcons: Record<string, typeof Church> = {
@@ -43,6 +46,8 @@ export default function AdminPanel() {
   const [allUsers, setAllUsers] = useState<any[]>([])
   const [slides, setSlides] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [processingId, setProcessingId] = useState<number | null>(null)
+  const [previewTestimony, setPreviewTestimony] = useState<any | null>(null)
 
   // Form states for creating slide
   const [slideBadge, setSlideBadge] = useState('')
@@ -61,10 +66,10 @@ export default function AdminPanel() {
   const [uploadingFile, setUploadingFile] = useState(false)
 
   const load = () => {
-    if (user?.role !== 'admin') return
+    if (user?.role !== 'admin' && !(user as any)?.is_staff && !(user as any)?.is_superuser) return
     setLoading(true)
     adminApi.stats().then(setStats).catch(() => {})
-    testimonyApi.pending().then(r => { setPendingList(r); setLoading(false) }).catch(() => setLoading(false))
+    testimonyApi.pending().then(r => { setPendingList(Array.isArray(r) ? r : (r.results || [])); setLoading(false) }).catch(() => setLoading(false))
     adminApi.users().then(setAllUsers).catch(() => {})
     slideApi.list().then(r => setSlides(r ? (r.results ?? r) : [])).catch(() => {})
   }
@@ -72,10 +77,31 @@ export default function AdminPanel() {
   useEffect(() => { load() }, [user])
 
   const handleApprove = async (id: number) => {
-    try { await testimonyApi.approve(id); toast('Approved!'); load() } catch (err: any) { toast.error(err.message) }
+    setProcessingId(id)
+    try {
+      await testimonyApi.approve(id)
+      toast.success('Testimony approved successfully! It is now live on Testimony Hub.')
+      load()
+      if (previewTestimony?.id === id) setPreviewTestimony(null)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to approve testimony')
+    } finally {
+      setProcessingId(null)
+    }
   }
+
   const handleDecline = async (id: number) => {
-    try { await testimonyApi.decline(id); toast('Declined.'); load() } catch (err: any) { toast.error(err.message) }
+    setProcessingId(id)
+    try {
+      await testimonyApi.decline(id)
+      toast.success('Testimony declined.')
+      load()
+      if (previewTestimony?.id === id) setPreviewTestimony(null)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to decline testimony')
+    } finally {
+      setProcessingId(null)
+    }
   }
 
   const handleDeleteSlide = async (id: number) => {
@@ -182,26 +208,131 @@ export default function AdminPanel() {
         
         {activeTab === 'testimonies' && (
           loading ? <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div> :
-            pendingList.length > 0 ? <div className="space-y-3">{pendingList.map(t => {
-              const CatIcon = categoryIcons[t.category] ?? Church
-              return <div key={t.id} className="bg-white rounded-xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Pending</span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: '#E8E4DE', color: '#6B6560' }}><CatIcon size={10} />{t.category}</span>
-                      <span className="text-xs" style={{ color: 'var(--eleven-text-muted)' }}>{t.is_anonymous ? 'Anonymous' : (t.author_name ?? 'User')} &middot; {timeAgo(t.created_at)}</span>
+            pendingList.length > 0 ? (
+              <div className="space-y-4">
+                {pendingList.map(t => {
+                  const CatIcon = categoryIcons[t.category] ?? Church
+                  const isProcessing = processingId === t.id
+                  const mediaUrl = getMediaUrl(t.media_url)
+                  const thumbUrl = getMediaUrl(t.thumbnail_url)
+                  const isVideo = t.type === 'video' || (mediaUrl && ['.mp4', '.mov', '.webm', '.mkv'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+                  const isAudio = t.type === 'audio' || (mediaUrl && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some(ext => mediaUrl.toLowerCase().endsWith(ext)))
+                  const isImage = t.type === 'image' || (mediaUrl && ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => mediaUrl.toLowerCase().endsWith(ext))) || (thumbUrl && !isVideo && !isAudio)
+
+                  return (
+                    <div key={t.id} className="bg-white rounded-xl p-5 border transition-all hover:shadow-md" style={{ borderColor: 'var(--eleven-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                      <div className="flex flex-col md:flex-row items-start justify-between gap-5">
+                        <div className="flex-1 min-w-0">
+                          {/* Badges Row */}
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                              <Clock size={10} /> Pending Review
+                            </span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1 bg-stone-100 text-stone-700">
+                              <CatIcon size={10} /> {t.category}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200">
+                              {isVideo && <><Video size={10} /> Video Testimony</>}
+                              {isAudio && <><Volume2 size={10} /> Audio Testimony</>}
+                              {isImage && <><ImageIcon size={10} /> Photo Testimony</>}
+                              {!isVideo && !isAudio && !isImage && <><BookOpen size={10} /> Written Story</>}
+                            </span>
+                            <span className="text-xs text-stone-400">
+                              By {t.is_anonymous ? 'Anonymous Member' : (t.author_name ?? 'User')} &middot; {timeAgo(t.created_at)}
+                            </span>
+                          </div>
+
+                          {/* Title & Description */}
+                          <h3 className="font-display text-lg font-bold text-stone-900 mb-1.5">{t.title}</h3>
+                          <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{t.content}</p>
+
+                          {/* ── Media Previews (Image, Video, Audio) ── */}
+                          {isVideo && mediaUrl && (
+                            <div className="mt-4 max-w-lg rounded-xl overflow-hidden bg-black border border-stone-800 shadow-sm">
+                              <div className="p-2 bg-stone-900 text-white text-[11px] font-semibold flex items-center gap-1.5 border-b border-stone-800">
+                                <Video size={13} className="text-red-400" />
+                                <span>Attached Video Preview</span>
+                              </div>
+                              <video
+                                src={mediaUrl}
+                                poster={thumbUrl || undefined}
+                                controls
+                                playsInline
+                                className="w-full max-h-64 object-contain"
+                              />
+                            </div>
+                          )}
+
+                          {isAudio && mediaUrl && (
+                            <div className="mt-4 max-w-lg p-3 rounded-xl bg-amber-50/50 border border-amber-200 shadow-sm flex flex-col gap-2">
+                              <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                                <Volume2 size={15} className="text-amber-600" />
+                                <span>Attached Audio Testimony</span>
+                              </div>
+                              {thumbUrl && (
+                                <img src={thumbUrl} alt="Thumbnail" className="w-full max-h-40 object-cover rounded-lg border border-amber-200" />
+                              )}
+                              <audio src={mediaUrl} controls className="w-full mt-1" />
+                            </div>
+                          )}
+
+                          {isImage && (mediaUrl || thumbUrl) && (
+                            <div className="mt-4 max-w-md">
+                              <div className="text-[11px] font-semibold text-stone-500 mb-1 flex items-center gap-1">
+                                <ImageIcon size={12} /> Attached Photo Preview:
+                              </div>
+                              <img
+                                src={mediaUrl || thumbUrl}
+                                alt={t.title}
+                                className="max-h-64 rounded-xl border border-stone-200 object-contain bg-stone-50 cursor-pointer hover:opacity-95 transition-opacity shadow-sm"
+                                onClick={() => setPreviewTestimony(t)}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex md:flex-col items-center gap-2.5 flex-shrink-0 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0">
+                          <Button
+                            size="sm"
+                            className="rounded-xl text-xs h-9 px-4 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex-1 md:flex-none flex items-center justify-center gap-1.5 cursor-pointer"
+                            disabled={isProcessing}
+                            onClick={() => handleApprove(t.id)}
+                          >
+                            <CheckCircle size={14} />
+                            <span>{isProcessing ? 'Approving...' : 'Approve'}</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl text-xs h-9 px-4 font-semibold text-red-600 border-red-200 hover:bg-red-50 flex-1 md:flex-none flex items-center justify-center gap-1.5 cursor-pointer"
+                            disabled={isProcessing}
+                            onClick={() => handleDecline(t.id)}
+                          >
+                            <XCircle size={14} />
+                            <span>Decline</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-xl text-xs h-8 px-3 text-stone-500 hover:text-stone-800 flex items-center gap-1"
+                            onClick={() => setPreviewTestimony(t)}
+                          >
+                            <Eye size={13} /> Full Preview
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="font-display text-base font-semibold mb-1" style={{ color: 'var(--eleven-text)' }}>{t.title}</h3>
-                    <p className="text-sm line-clamp-3" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>
-                  </div>
-                  <div className="flex flex-col gap-2 flex-shrink-0">
-                    <Button size="sm" className="rounded-lg text-xs h-8 px-3" style={{ background: 'var(--eleven-success)' }} onClick={() => handleApprove(t.id)}><CheckCircle size={13} className="mr-1" /> Approve</Button>
-                    <Button variant="outline" size="sm" className="rounded-lg text-xs h-8 px-3" style={{ borderColor: 'var(--eleven-live)', color: 'var(--eleven-live)' }} onClick={() => handleDecline(t.id)}><XCircle size={13} className="mr-1" /> Decline</Button>
-                  </div>
-                </div>
+                  )
+                })}
               </div>
-            })}</div> : <div className="text-center py-16"><CheckCircle size={32} className="mx-auto mb-3" style={{ color: 'var(--eleven-success)' }} /><p className="text-lg font-medium" style={{ color: 'var(--eleven-text)' }}>All caught up!</p><p className="text-sm" style={{ color: 'var(--eleven-text-secondary)' }}>No pending testimonies to review.</p></div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-xl border border-dashed" style={{ borderColor: 'var(--eleven-border)' }}>
+                <CheckCircle size={36} className="mx-auto mb-3 text-emerald-600" />
+                <p className="text-lg font-bold text-stone-800">All caught up!</p>
+                <p className="text-xs text-stone-500 mt-1">No pending testimonies to review at this moment.</p>
+              </div>
+            )
         )}
         
         {activeTab === 'users' && (
@@ -409,6 +540,98 @@ export default function AdminPanel() {
           </div>
         )}
       </div>
+
+      {/* Full Preview Modal for Pending Testimony Review */}
+      {previewTestimony && (
+        <Dialog open={Boolean(previewTestimony)} onOpenChange={(open) => !open && setPreviewTestimony(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-6 bg-white rounded-2xl">
+            <DialogHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                  <Clock size={10} /> Pending Review
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700">
+                  {previewTestimony.category}
+                </span>
+                <span className="text-xs text-stone-400">
+                  {timeAgo(previewTestimony.created_at)}
+                </span>
+              </div>
+              <DialogTitle className="font-display text-xl font-bold text-stone-900 leading-tight">
+                {previewTestimony.title}
+              </DialogTitle>
+              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-stone-100 text-xs text-stone-600">
+                <span>Author: <strong className="text-stone-900">{previewTestimony.is_anonymous ? 'Anonymous Member' : (previewTestimony.author_name ?? 'User')}</strong></span>
+              </div>
+            </DialogHeader>
+
+            <div className="my-4 space-y-4">
+              {/* Media Preview in Modal */}
+              {(previewTestimony.type === 'video' || (previewTestimony.media_url && ['.mp4', '.mov', '.webm', '.mkv'].some((ext: string) => previewTestimony.media_url.toLowerCase().endsWith(ext)))) && previewTestimony.media_url ? (
+                <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-stone-800">
+                  <video
+                    src={getMediaUrl(previewTestimony.media_url)}
+                    poster={getMediaUrl(previewTestimony.thumbnail_url) || undefined}
+                    controls
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (previewTestimony.type === 'audio' || (previewTestimony.media_url && ['.mp3', '.wav', '.m4a', '.ogg', '.aac'].some((ext: string) => previewTestimony.media_url.toLowerCase().endsWith(ext)))) && previewTestimony.media_url ? (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-900 mb-2">
+                    <Volume2 size={16} className="text-amber-600" />
+                    <span>Voice Testimony Player</span>
+                  </div>
+                  {previewTestimony.thumbnail_url && (
+                    <img src={getMediaUrl(previewTestimony.thumbnail_url)} alt="" className="w-full max-h-48 object-cover rounded-lg mb-3" />
+                  )}
+                  <audio src={getMediaUrl(previewTestimony.media_url)} controls className="w-full" />
+                </div>
+              ) : previewTestimony.media_url || previewTestimony.thumbnail_url ? (
+                <div className="rounded-xl overflow-hidden border border-stone-200 max-h-80 bg-stone-50 flex items-center justify-center">
+                  <img
+                    src={getMediaUrl(previewTestimony.media_url || previewTestimony.thumbnail_url)}
+                    alt={previewTestimony.title}
+                    className="max-h-80 w-auto object-contain"
+                  />
+                </div>
+              ) : null}
+
+              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
+                <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">Story Content</h4>
+                <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">{previewTestimony.content}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200">
+              <Button
+                variant="outline"
+                className="rounded-xl text-xs h-9 px-4 font-semibold text-stone-600"
+                onClick={() => setPreviewTestimony(null)}
+              >
+                Close
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl text-xs h-9 px-4 font-semibold text-red-600 border-red-200 hover:bg-red-50"
+                disabled={processingId === previewTestimony.id}
+                onClick={() => handleDecline(previewTestimony.id)}
+              >
+                <XCircle size={14} className="mr-1.5" /> Decline
+              </Button>
+              <Button
+                className="rounded-xl text-xs h-9 px-5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                disabled={processingId === previewTestimony.id}
+                onClick={() => handleApprove(previewTestimony.id)}
+              >
+                <CheckCircle size={14} className="mr-1.5" />
+                {processingId === previewTestimony.id ? 'Approving...' : 'Approve Testimony'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

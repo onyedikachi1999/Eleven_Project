@@ -36,6 +36,9 @@ class TestimonyViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Testimony.objects.all()
+        if self.action in ['approve', 'decline', 'retrieve', 'amen', 'increment_view']:
+            return qs
+
         category = self.request.query_params.get('category')
         ttype = self.request.query_params.get('type')
         sort = self.request.query_params.get('sort', 'recent')
@@ -47,7 +50,7 @@ class TestimonyViewSet(viewsets.ModelViewSet):
             qs = qs.filter(type=ttype)
         if status_filter:
             qs = qs.filter(status=status_filter)
-        else:
+        elif self.action == 'list':
             qs = qs.filter(status='approved')
 
         if sort == 'popular':
@@ -68,7 +71,10 @@ class TestimonyViewSet(viewsets.ModelViewSet):
     def amen(self, request, pk=None):
         if not request.user.is_authenticated:
             return Response({'detail': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-        t = self.get_object()
+        try:
+            t = Testimony.objects.get(pk=pk)
+        except Testimony.DoesNotExist:
+            return Response({'detail': 'Testimony not found'}, status=404)
         from .models import TestimonyReaction
         reaction, created = TestimonyReaction.objects.get_or_create(testimony=t, user=request.user)
         if not created:
@@ -84,36 +90,45 @@ class TestimonyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def increment_view(self, request, pk=None):
-        t = self.get_object()
+        try:
+            t = Testimony.objects.get(pk=pk)
+        except Testimony.DoesNotExist:
+            return Response({'detail': 'Testimony not found'}, status=404)
         t.view_count += 1
         t.save()
         return Response({'view_count': t.view_count})
 
     @action(detail=False, methods=['get'])
     def pending(self, request):
-        if not (request.user.is_authenticated and request.user.role == 'admin'):
+        if not (request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser)):
             return Response({'detail': 'Forbidden'}, status=403)
         qs = Testimony.objects.filter(status='pending').order_by('-created_at')
-        serializer = TestimonyListSerializer(qs, many=True)
+        serializer = TestimonyListSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        if not (request.user.is_authenticated and request.user.role == 'admin'):
+        if not (request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser)):
             return Response({'detail': 'Forbidden'}, status=403)
-        t = self.get_object()
+        try:
+            t = Testimony.objects.get(pk=pk)
+        except Testimony.DoesNotExist:
+            return Response({'detail': 'Testimony not found'}, status=404)
         t.status = 'approved'
         t.save()
-        return Response({'status': 'approved'})
+        return Response({'status': 'approved', 'id': t.id, 'title': t.title})
 
     @action(detail=True, methods=['post'])
     def decline(self, request, pk=None):
-        if not (request.user.is_authenticated and request.user.role == 'admin'):
+        if not (request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser)):
             return Response({'detail': 'Forbidden'}, status=403)
-        t = self.get_object()
+        try:
+            t = Testimony.objects.get(pk=pk)
+        except Testimony.DoesNotExist:
+            return Response({'detail': 'Testimony not found'}, status=404)
         t.status = 'declined'
         t.save()
-        return Response({'status': 'declined'})
+        return Response({'status': 'declined', 'id': t.id, 'title': t.title})
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
