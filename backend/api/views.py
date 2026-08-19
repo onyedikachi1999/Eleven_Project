@@ -323,18 +323,27 @@ class PrayerCircleViewSet(viewsets.ModelViewSet):
                 if uploaded_file.size > 5 * 1024 * 1024:  # 5MB limit
                     return Response({'detail': 'Image must be under 5MB'}, status=400)
                 
-                # Hardened Image Validation via PIL
+                # Hardened Image Validation and Compression via PIL
                 from PIL import Image
+                import base64
+                import io
                 try:
                     img = Image.open(uploaded_file)
                     img.verify()
                     uploaded_file.seek(0)
+                    img = Image.open(uploaded_file)
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+                    buf = io.BytesIO()
+                    img.save(buf, format='JPEG', quality=85, optimize=True)
+                    encoded = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    image_url = f"data:image/jpeg;base64,{encoded}"
+
+                    filename = f"{uuid.uuid4()}.jpeg"
+                    default_storage.save(os.path.join('circle_images', filename), ContentFile(buf.getvalue()))
                 except Exception:
                     return Response({'detail': 'Invalid image file. The uploaded file is corrupted or not a valid image.'}, status=400)
-                
-                filename = f"{uuid.uuid4()}{ext}"
-                path = default_storage.save(os.path.join('circle_images', filename), ContentFile(uploaded_file.read()))
-                image_url = request.build_absolute_uri(settings.MEDIA_URL + path)
 
             if not content and not image_url:
                 return Response({'detail': 'Message must have text or an image'}, status=400)
@@ -1395,23 +1404,24 @@ def api_user_upload(request):
     if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
         return Response({'detail': 'Unsupported image type. Only JPG, PNG, GIF, WEBP are allowed.'}, status=400)
 
-    # Verify via PIL
+    # Verify and compress via PIL to persistent Data URL
     from PIL import Image
+    import base64
+    import io
     try:
         img = Image.open(uploaded_file)
         img.verify()
         uploaded_file.seek(0)
-    except Exception:
-        return Response({'detail': 'Invalid image file. The uploaded file is corrupted or not a valid image.'}, status=400)
-
-    # Generate unique filename to avoid conflict
-    filename = f"{uuid.uuid4()}{ext}"
-    path = default_storage.save(os.path.join('avatars', filename), ContentFile(uploaded_file.read()))
-
-    # Generate full URL
-    url = request.build_absolute_uri(settings.MEDIA_URL + path)
-    if not settings.DEBUG and url.startswith('http://') and not ('localhost' in url or '127.0.0.1' in url):
-        url = 'https://' + url[7:]
+        img = Image.open(uploaded_file)
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        img.thumbnail((400, 400), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=85, optimize=True)
+        encoded = base64.b64encode(buf.getvalue()).decode('utf-8')
+        url = f"data:image/jpeg;base64,{encoded}"
+    except Exception as e:
+        return Response({'detail': f'Invalid image file: {str(e)}'}, status=400)
 
     # Automatically save avatar to user model immediately
     request.user.avatar = url
@@ -1440,12 +1450,27 @@ def api_testimony_media_upload(request):
     if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
         folder = 'testimony_images'
         from PIL import Image
+        import base64
+        import io
         try:
             img = Image.open(uploaded_file)
             img.verify()
             uploaded_file.seek(0)
-        except Exception:
-            return Response({'detail': 'Invalid image file.'}, status=400)
+            img = Image.open(uploaded_file)
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, format='JPEG', quality=85, optimize=True)
+            encoded = base64.b64encode(buf.getvalue()).decode('utf-8')
+            url = f"data:image/jpeg;base64,{encoded}"
+            
+            # Also save file to disk as backup
+            filename = f"{uuid.uuid4()}.jpeg"
+            default_storage.save(os.path.join(folder, filename), ContentFile(buf.getvalue()))
+            return Response({'url': url})
+        except Exception as e:
+            return Response({'detail': f'Invalid image file: {str(e)}'}, status=400)
             
     elif ext in ['.mp4', '.mov', '.avi', '.webm', '.mkv']:
         folder = 'testimony_videos'
@@ -1456,7 +1481,7 @@ def api_testimony_media_upload(request):
     else:
         return Response({'detail': f'Unsupported file extension: {ext}'}, status=400)
 
-    # Generate unique filename
+    # Generate unique filename for video/audio
     filename = f"{uuid.uuid4()}{ext}"
     path = default_storage.save(os.path.join(folder, filename), ContentFile(uploaded_file.read()))
 

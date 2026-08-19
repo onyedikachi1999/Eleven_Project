@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
-    avatar = models.URLField(max_length=500, blank=True, null=True)
+    avatar = models.TextField(blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     role = models.CharField(max_length=10, choices=[('user', 'User'), ('admin', 'Admin')], default='user')
     subscription_plan = models.CharField(
@@ -254,7 +254,7 @@ class CircleMessage(models.Model):
     circle = models.ForeignKey(PrayerCircle, on_delete=models.CASCADE, related_name='messages')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField(blank=True)
-    image = models.URLField(blank=True, null=True)
+    image = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
