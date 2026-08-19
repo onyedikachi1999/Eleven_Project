@@ -39,11 +39,11 @@ function PrayerCard({ p, onUpdate }: { p: any; onUpdate: () => void }) {
   }, [isAuthenticated, p.id])
 
   const handlePray = async () => {
-    if (!isAuthenticated) { toast('Please sign in to pray'); return }
+    if (!isAuthenticated) { toast.error('Please sign in to pray'); return }
     try {
       const res = await prayerApi.prayFor(p.id)
       if (res.success) { setHasPrayed(true); onUpdate() }
-      toast(res.message)
+      toast.success(res.message || 'Prayer recorded! Thank you.')
     } catch (err: any) { toast.error(err.message) }
   }
 
@@ -82,13 +82,13 @@ function SubmitPrayerForm({ onSuccess }: { onSuccess: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isAuthenticated) { toast('Please sign in first'); return }
+    if (!isAuthenticated) { toast.error('Please sign in first'); return }
     if (!content.trim()) return
     setSubmitting(true)
     try {
       await prayerApi.create({ content: content.trim(), category, urgency, is_anonymous: isAnonymous })
       setContent(''); setCategory('general'); setUrgency('low'); setIsAnonymous(true)
-      toast('Prayer request submitted!')
+      toast.success('Prayer request submitted successfully!')
       onSuccess()
     } catch (err: any) { toast.error(err.message) }
     setSubmitting(false)

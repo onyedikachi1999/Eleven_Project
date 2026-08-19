@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { authApi } from '@/lib/api'
+import { AlertCircle } from 'lucide-react'
 import ElevenFaithBanner from '@/components/ElevenFaithBanner'
 
 export default function Register() {
@@ -14,14 +15,19 @@ export default function Register() {
     first_name: '',
     last_name: '',
   })
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const handleGoogleCredentialResponse = async (response: any) => {
     try {
       await authApi.googleAuth(response.credential)
-      toast('Welcome to ElevenFaith!')
+      toast.success('Welcome to ElevenFaith!')
       window.location.href = '/'
     } catch (err: any) {
-      toast.error(err.message || 'Google authentication failed')
+      const msg = err.message || 'Google authentication failed'
+      setErrorMsg(msg)
+      toast.error(msg)
     }
   }
 
@@ -40,27 +46,32 @@ export default function Register() {
       )
     }
   }, [])
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMsg('')
     if (formData.password !== confirmPassword) {
-      toast.error('Passwords do not match')
+      const msg = 'Passwords do not match'
+      setErrorMsg(msg)
+      toast.error(msg)
       return
     }
     if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters')
+      const msg = 'Password must be at least 6 characters'
+      setErrorMsg(msg)
+      toast.error(msg)
       return
     }
 
     setLoading(true)
     try {
       await authApi.register(formData)
-      toast('Welcome to ElevenFaith!')
+      toast.success('Welcome to ElevenFaith!')
       window.location.href = '/'
     } catch (err: any) {
-      toast.error(err.message || 'Registration failed. Try again.')
+      const msg = err.message || 'Registration failed. Try again.'
+      setErrorMsg(msg)
+      toast.error(msg)
     }
     setLoading(false)
   }
@@ -80,6 +91,12 @@ export default function Register() {
             <p className="text-sm mt-1" style={{ color: 'var(--eleven-text-secondary)' }}>Join our faith community and make a difference.</p>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
+            {errorMsg && (
+              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center gap-2.5 animate-shake shadow-sm">
+                <AlertCircle size={16} className="text-red-600 flex-shrink-0" />
+                <span className="flex-1">{errorMsg}</span>
+              </div>
+            )}
             <form onSubmit={handleRegister} className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>

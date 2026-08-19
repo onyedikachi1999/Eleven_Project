@@ -59,7 +59,7 @@ export default function App() {
         </PageTransition>
       </main>
       {!isLiveRoom && <Footer />}
-      <Toaster position="bottom-right" />
+      <Toaster position="top-center" />
     </div>
     </ThemeProvider>
   )

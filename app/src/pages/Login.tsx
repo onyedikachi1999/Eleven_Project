@@ -4,11 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { authApi } from '@/lib/api'
+import { AlertCircle } from 'lucide-react'
 import ElevenFaithBanner from '@/components/ElevenFaithBanner'
+
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const handleGoogleCredentialResponse = async (response: any) => {
     try {
@@ -16,7 +19,9 @@ export default function Login() {
       toast.success('Welcome to ElevenFaith!')
       window.location.href = '/'
     } catch (err: any) {
-      toast.error(err.message || 'Google authentication failed')
+      const msg = err.message || 'Google authentication failed'
+      setErrorMsg(msg)
+      toast.error(msg)
     }
   }
 
@@ -39,12 +44,15 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setErrorMsg('')
     try {
       await authApi.login(username, password)
       toast.success('Welcome back!')
       window.location.href = '/'
     } catch (err: any) {
-      toast.error(err.message || 'Invalid credentials')
+      const msg = err.message || 'Invalid username or password'
+      setErrorMsg(msg)
+      toast.error(msg)
     }
     setLoading(false)
   }
@@ -61,17 +69,23 @@ export default function Login() {
             <p className="text-sm mt-1" style={{ color: 'var(--eleven-text-secondary)' }}>Sign in to share your testimony and join the prayer.</p>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
+            {errorMsg && (
+              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center gap-2.5 animate-shake shadow-sm">
+                <AlertCircle size={16} className="text-red-600 flex-shrink-0" />
+                <span className="flex-1">{errorMsg}</span>
+              </div>
+            )}
             <form onSubmit={handleLogin} className="space-y-3">
               <div>
                 <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--eleven-text-secondary)' }}>Username or Email</label>
                 <input
                   type="text"
                   value={username}
-                  onChange={e => setUsername(e.target.value)}
+                  onChange={e => { setUsername(e.target.value); if (errorMsg) setErrorMsg(''); }}
                   placeholder="Username or email address"
                   required
-                  className="w-full px-3 py-2.5 rounded-lg text-sm border outline-none transition-colors focus:border-[var(--eleven-accent)]"
-                  style={{ background: 'white', borderColor: 'var(--eleven-border)' }}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm border outline-none transition-colors ${errorMsg ? 'border-red-400 bg-red-50/20' : 'focus:border-[var(--eleven-accent)] bg-white'}`}
+                  style={{ borderColor: errorMsg ? undefined : 'var(--eleven-border)' }}
                 />
               </div>
               <div>
@@ -79,11 +93,11 @@ export default function Login() {
                 <input
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="eleven2025"
+                  onChange={e => { setPassword(e.target.value); if (errorMsg) setErrorMsg(''); }}
+                  placeholder="Password"
                   required
-                  className="w-full px-3 py-2.5 rounded-lg text-sm border outline-none transition-colors focus:border-[var(--eleven-accent)]"
-                  style={{ background: 'white', borderColor: 'var(--eleven-border)' }}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm border outline-none transition-colors ${errorMsg ? 'border-red-400 bg-red-50/20' : 'focus:border-[var(--eleven-accent)] bg-white'}`}
+                  style={{ borderColor: errorMsg ? undefined : 'var(--eleven-border)' }}
                 />
               </div>
               <Button type="submit" className="w-full rounded-lg font-semibold h-10" style={{ background: 'var(--eleven-accent)' }} disabled={loading}>

@@ -103,7 +103,7 @@ export default function Pricing() {
 
   const handleSelectPlan = async (planId: 'free' | 'regular' | 'premium') => {
     if (!isAuthenticated) {
-      toast('Please sign in to select a subscription plan.')
+      toast.error('Please sign in to select a subscription plan.')
       navigate('/login')
       return
     }

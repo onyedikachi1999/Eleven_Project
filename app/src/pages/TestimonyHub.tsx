@@ -92,7 +92,7 @@ function SubmitTestimonyModal({ onSuccess }: { onSuccess: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isAuthenticated) { toast('Please sign in first'); return }
+    if (!isAuthenticated) { toast.error('Please sign in first'); return }
     if (!title.trim() || !content.trim()) return
     if (type !== 'text' && !selectedFile) {
       toast.error(`Please select a ${type} file to upload.`); return
@@ -110,7 +110,7 @@ function SubmitTestimonyModal({ onSuccess }: { onSuccess: () => void }) {
       })
       setOpen(false); setTitle(''); setContent(''); setCategory('general'); setType('text'); setIsAnonymous(false)
       clearFile()
-      toast('Testimony submitted! It will be reviewed shortly.')
+      toast.success('Testimony submitted! It will be reviewed shortly by our moderators.')
       onSuccess()
     } catch (err: any) { toast.error(err.message || 'Failed to submit testimony') }
     setSubmitting(false)
