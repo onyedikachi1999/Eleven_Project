@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { TestimonyCard, TestimonyDetailModal, categoryIcons, categoryColors, timeAgo } from '@/components/TestimonyCardShared'
 import ElevenFaithBanner from '@/components/ElevenFaithBanner'
+import { LazyImage } from '@/components/LazyImage'
 
 // ── Hero Section ──
 function HeroSection() {
@@ -103,10 +104,11 @@ function SlideShowBoard() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <img
+                <LazyImage
                   src={slide.media_url}
                   alt={slide.title}
                   className="w-full h-full object-cover"
+                  containerClassName="w-full h-full"
                 />
               )}
             </div>
@@ -402,7 +404,7 @@ function VideoSection() {
         {videos.map(v => (
           <div key={v.id} className="flex-shrink-0 w-72 snap-start group cursor-pointer">
             <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
-              <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <LazyImage src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" containerClassName="w-full h-full" />
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
               <div className="absolute inset-0 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center opacity-90 group-hover:scale-110 transition-transform"><Play size={18} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>
               <span className="absolute bottom-2 right-2 text-[10px] font-medium bg-black/70 text-white px-1.5 py-0.5 rounded">8:24</span>

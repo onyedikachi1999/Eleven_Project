@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { LazyImage } from '@/components/LazyImage'
 import {
   Shield, Users, BookOpen, HandHeart, CheckCircle, XCircle, Clock,
   Flame, Briefcase, UserPlus, Church, Sparkles, Plus, Trash2, Film,
@@ -280,7 +281,7 @@ export default function AdminPanel() {
                                 <span>Attached Audio Testimony</span>
                               </div>
                               {thumbUrl && (
-                                <img src={thumbUrl} alt="Thumbnail" className="w-full max-h-40 object-cover rounded-lg border border-amber-200" />
+                                <LazyImage src={thumbUrl} alt="Thumbnail" className="w-full max-h-40 object-cover rounded-lg border border-amber-200" containerClassName="w-full max-h-40" />
                               )}
                               <audio src={mediaUrl} controls className="w-full mt-1" />
                             </div>
@@ -291,7 +292,7 @@ export default function AdminPanel() {
                               <div className="text-[11px] font-semibold text-stone-500 mb-1 flex items-center gap-1">
                                 <ImageIcon size={12} /> Attached Photo Preview:
                               </div>
-                              <img
+                              <LazyImage
                                 src={mediaUrl || thumbUrl}
                                 alt={t.title}
                                 className="max-h-64 rounded-xl border border-stone-200 object-contain bg-stone-50 cursor-pointer hover:opacity-95 transition-opacity shadow-sm"
@@ -571,7 +572,7 @@ export default function AdminPanel() {
                               </>
                             ) : (
                               <>
-                                <img src={slide.media_url} alt="" className="w-full h-full object-cover" />
+                                <LazyImage src={slide.media_url} alt="" className="w-full h-full object-cover" containerClassName="w-full h-full" />
                                 <span className="absolute bottom-1 right-1 text-[8px] bg-black/60 text-white px-1 py-0.2 rounded font-semibold">Img</span>
                               </>
                             )}
@@ -652,13 +653,13 @@ export default function AdminPanel() {
                     <span>Voice Testimony Player</span>
                   </div>
                   {previewTestimony.thumbnail_url && (
-                    <img src={getMediaUrl(previewTestimony.thumbnail_url)} alt="" className="w-full max-h-48 object-cover rounded-lg mb-3" />
+                    <LazyImage src={getMediaUrl(previewTestimony.thumbnail_url)} alt="" className="w-full max-h-48 object-cover rounded-lg mb-3" containerClassName="w-full max-h-48" />
                   )}
                   <audio src={getMediaUrl(previewTestimony.media_url)} controls className="w-full" />
                 </div>
               ) : previewTestimony.media_url || previewTestimony.thumbnail_url ? (
                 <div className="rounded-xl overflow-hidden border border-stone-200 max-h-80 bg-stone-50 flex items-center justify-center">
-                  <img
+                  <LazyImage
                     src={getMediaUrl(previewTestimony.media_url || previewTestimony.thumbnail_url)}
                     alt={previewTestimony.title}
                     className="max-h-80 w-auto object-contain"

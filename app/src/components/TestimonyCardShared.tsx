@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
+import { LazyImage } from '@/components/LazyImage'
 import {
   Heart, MessageCircle, Bookmark, Share2, Play, HandHeart, Flame,
   Briefcase, UserPlus, Church, Sparkles, Volume2, ImageIcon,
@@ -144,7 +145,7 @@ export function TestimonyCard({ t, onSelect, onAmen }: TestimonyCardProps) {
     <div onClick={onSelect} className="group bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)', borderLeft: `3px solid ${catColor.bg}` }}>
       {displayImage ? (
         <div className="relative aspect-video overflow-hidden bg-stone-100 flex items-center justify-center">
-          <img src={displayImage} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          <LazyImage src={displayImage} alt={t.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" containerClassName="w-full h-full" />
           {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-md"><Play size={20} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>}
         </div>
       ) : isVideo ? (
@@ -414,14 +415,14 @@ export function TestimonyDetailModal({ t, open, onOpenChange, onUpdate }: Testim
               </div>
               {thumbUrl && (
                 <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
-                  <img src={thumbUrl} alt={t.title} className="w-full h-full object-cover" />
+                  <LazyImage src={thumbUrl} alt={t.title} className="w-full h-full object-cover" containerClassName="w-full h-full" />
                 </div>
               )}
               <audio src={mediaUrl} controls className="w-full mt-2" />
             </div>
           ) : displayImage ? (
             <div className="rounded-xl overflow-hidden mb-4 bg-stone-50 border border-stone-200 flex items-center justify-center p-1 max-h-96">
-              <img src={displayImage} alt={t.title} className="max-h-96 w-auto object-contain rounded-lg shadow-sm" />
+              <LazyImage src={displayImage} alt={t.title} className="max-h-96 w-auto object-contain rounded-lg shadow-sm" />
             </div>
           ) : null}
           <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--eleven-text-secondary)' }}>{t.content}</p>

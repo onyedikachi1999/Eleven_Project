@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Link, useNavigate } from 'react-router'
+import { LazyImage } from '@/components/LazyImage'
 
 const channelTabs = ['all', 'live', 'healing', 'finance', 'family', 'career', 'deliverance', 'general']
 
@@ -125,7 +126,7 @@ export default function ElevenTV() {
       {videos.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div onClick={() => { setSelectedVideo(videos[0]); setDetailOpen(true); }} className="relative aspect-video max-h-[480px] rounded-2xl overflow-hidden group cursor-pointer">
-            <img src={videos[0].thumbnail_url} alt={videos[0].title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <LazyImage src={videos[0].thumbnail_url} alt={videos[0].title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" containerClassName="w-full h-full" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
             <div className="absolute inset-0 flex items-center justify-center"><div className="w-20 h-20 rounded-full bg-white/90 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform"><Play size={28} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>
             <div className="absolute bottom-0 left-0 right-0 p-6">
@@ -228,7 +229,7 @@ export default function ElevenTV() {
             {videos.slice(1).map(v => (
               <div key={v.id} onClick={() => { setSelectedVideo(v); setDetailOpen(true); }} className="group cursor-pointer">
                 <div className="relative aspect-video rounded-xl overflow-hidden mb-2">
-                  <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <LazyImage src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" containerClassName="w-full h-full" />
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/25 transition-colors" />
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center"><Play size={16} fill="var(--eleven-accent)" style={{ color: 'var(--eleven-accent)' }} /></div></div>
                   <span className="absolute bottom-2 right-2 text-[10px] font-medium bg-black/70 text-white px-1.5 py-0.5 rounded">8:24</span>

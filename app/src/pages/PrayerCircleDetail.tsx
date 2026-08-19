@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getMediaUrl } from '@/lib/utils'
 import { toast } from 'sonner'
+import { LazyImage } from '@/components/LazyImage'
 import {
   ArrowLeft, Users, Lock, Globe, MessageSquare, Send,
   Shield, Calendar, HandHeart, Flame, Briefcase, UserPlus, Church, Sparkles, ImagePlus, X
@@ -324,7 +325,13 @@ export default function PrayerCircleDetail() {
                           </div>
                           <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--eleven-text-secondary)' }}>{msg.content}</p>
                           {msg.image && (
-                            <img src={msg.image} alt="Shared image" className="mt-2 max-w-full max-h-64 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity" style={{ borderColor: 'var(--eleven-border)' }} onClick={() => window.open(msg.image, '_blank')} />
+                            <LazyImage
+                              src={msg.image}
+                              alt="Shared image"
+                              className="mt-2 max-w-full max-h-64 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                              style={{ borderColor: 'var(--eleven-border)' }}
+                              onClick={() => window.open(msg.image, '_blank')}
+                            />
                           )}
                           {/* Reaction bar */}
                           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
