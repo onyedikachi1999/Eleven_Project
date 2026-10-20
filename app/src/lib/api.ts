@@ -1,5 +1,9 @@
 // Django REST API client – automatically targets Render production or local dev
-const defaultBackend = (typeof window !== 'undefined' && (window.location.hostname.includes('onrender.com') || import.meta.env.PROD))
+const defaultBackend = (typeof window !== 'undefined' && (
+    window.location.hostname.includes('onrender.com') ||
+    window.location.hostname.includes('elevenfaith.com') ||
+    import.meta.env.PROD
+  ))
   ? 'https://eleven-backend-r9y1.onrender.com'
   : 'http://localhost:8000';
 

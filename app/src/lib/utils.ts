@@ -12,7 +12,11 @@ export function getMediaUrl(url: string | null | undefined): string | undefined 
   
   // If relative path like /media/...
   if (clean.startsWith('/')) {
-    const defaultBackend = (typeof window !== 'undefined' && (window.location.hostname.includes('onrender.com') || import.meta.env.PROD))
+    const defaultBackend = (typeof window !== 'undefined' && (
+        window.location.hostname.includes('onrender.com') ||
+        window.location.hostname.includes('elevenfaith.com') ||
+        import.meta.env.PROD
+      ))
       ? 'https://eleven-backend-r9y1.onrender.com'
       : 'http://localhost:8000';
     const rawBase = import.meta.env.VITE_API_BASE_URL || defaultBackend;

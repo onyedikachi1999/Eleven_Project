@@ -95,19 +95,30 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'api.User'
 
-# CORS — allow all in dev, allow all onrender.com subdomains & configured origins
+# CORS configuration — always allow elevenfaith.com, onrender.com, and local dev
+CORS_ALLOWED_ORIGINS = [
+    'https://elevenfaith.com',
+    'https://www.elevenfaith.com',
+    'https://eleven-frontend-tr2s.onrender.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+]
+
 _CORS_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '')
 if _CORS_ORIGINS:
-    CORS_ALLOWED_ORIGINS = [o.strip() for o in _CORS_ORIGINS.split(',') if o.strip()]
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^https://.*\.onrender\.com$",
-        r"^https://.*\.elevenfaith\.com$",
-        r"^https://elevenfaith\.com$",
-        r"^http://localhost:\d+$",
-        r"^http://127\.0\.0\.1:\d+$",
-    ]
-else:
-    CORS_ALLOW_ALL_ORIGINS = True
+    for o in _CORS_ORIGINS.split(','):
+        clean_o = o.strip()
+        if clean_o and clean_o not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(clean_o)
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.onrender\.com$",
+    r"^https://.*\.elevenfaith\.com$",
+    r"^https://elevenfaith\.com$",
+    r"^http://localhost:\d+$",
+    r"^http://127\.0\.0\.1:\d+$",
+]
 
 CORS_ALLOW_CREDENTIALS = True
 
