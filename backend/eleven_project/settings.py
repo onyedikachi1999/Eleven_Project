@@ -101,6 +101,8 @@ if _CORS_ORIGINS:
     CORS_ALLOWED_ORIGINS = [o.strip() for o in _CORS_ORIGINS.split(',') if o.strip()]
     CORS_ALLOWED_ORIGIN_REGEXES = [
         r"^https://.*\.onrender\.com$",
+        r"^https://.*\.elevenfaith\.com$",
+        r"^https://elevenfaith\.com$",
         r"^http://localhost:\d+$",
         r"^http://127\.0\.0\.1:\d+$",
     ]
@@ -113,6 +115,9 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
     'https://eleven-frontend-tr2s.onrender.com',
+    'https://elevenfaith.com',
+    'https://www.elevenfaith.com',
+    'https://*.elevenfaith.com',
     'http://localhost:5173',
     'http://localhost:3000',
     'http://127.0.0.1:5173',
